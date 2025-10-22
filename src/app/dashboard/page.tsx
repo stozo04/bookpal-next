@@ -1,10 +1,11 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import Link from "next/link";
+import DashboardClient from "./DashboardClient";
+import { supabaseAdmin } from "@/lib/supabaseServer";
+import type { DBBook } from "@/lib/types";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
-
   if (!session?.user) {
     return (
       <div className="text-center py-5">
@@ -13,21 +14,13 @@ export default async function DashboardPage() {
       </div>
     );
   }
+  const userId = (session.user as any).id;
 
-  const name = session.user?.name ?? "Reader";
+  const { data: books = [] } = await supabaseAdmin
+    .from("books")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false }) as { data: DBBook[] | null };
 
-  return (
-    <div className="row g-4">
-      <div className="col-12">
-        <div className="p-4 rounded-4 border bg-white shadow-sm">
-          <h1 className="h3 mb-1">Welcome, {name}</h1>
-          <p className="text-secondary mb-4">Your library lives here. Let’s get reading.</p>
-          <div className="d-flex gap-2">
-            <Link className="btn btn-outline-primary" href="/">Upload a Book (soon)</Link>
-            <Link className="btn btn-primary" href="/reader/demo">Open Reader (demo)</Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return <DashboardClient initialBooks={books} />;
 }

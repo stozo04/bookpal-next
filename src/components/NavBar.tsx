@@ -8,7 +8,7 @@ export default function NavBar() {
     import("bootstrap/dist/js/bootstrap.bundle.min.js");
   }, []);
 
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
 
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top">
@@ -17,9 +17,6 @@ export default function NavBar() {
 
         {/* Right-side actions ALWAYS visible */}
         <div className="d-flex align-items-center gap-3 order-lg-2">
-          {/* remove this line later if you don't want the debug */}
-          <span className="small text-muted d-none d-md-inline">{status}</span>
-
           {session?.user ? (
             <>
               <span className="text-secondary small d-none d-sm-inline">
