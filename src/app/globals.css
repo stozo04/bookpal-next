@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Subtle polish */
+:root {
+  --brand: #2563eb; /* Tailwind blue-600 */
+}
+.btn-primary {
+  background-color: var(--brand);
+  border-color: var(--brand);
+}
+.btn-primary:hover {
+  filter: brightness(0.95);
+}
