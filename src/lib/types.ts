@@ -1,3 +1,4 @@
+// src/lib/types.ts
 export type Chapter = { title: string; content: string };
 
 export type Book = {

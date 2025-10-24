@@ -1,28 +1,31 @@
+// src/components/NavBar.tsx
 "use client";
-import { useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
 
 export default function NavBar() {
-  useEffect(() => {
-    import("bootstrap/dist/js/bootstrap.bundle.min.js");
-  }, []);
+  const { data: session, status } = useSession();
+  const pathname = usePathname();
 
-  const { data: session } = useSession();
+  const isActive = (href: string) => pathname === href;
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-light bg-white border-bottom sticky-top">
+    <nav className="navbar navbar-expand-lg sticky-top bg-white border-bottom" data-bs-theme="light">
       <div className="container">
-        <Link className="navbar-brand fw-bold" href="/">Bookpal</Link>
+        <Link className="navbar-brand fw-bold" href="/">
+          Bookpal
+        </Link>
 
-        {/* Right-side actions ALWAYS visible */}
-        <div className="d-flex align-items-center gap-3 order-lg-2">
+        {/* Right-side actions */}
+        <div className="d-flex align-items-center gap-2 gap-lg-3 order-lg-2">
           {session?.user ? (
             <>
-              <span className="text-secondary small d-none d-sm-inline">
+              <span className="text-secondary small d-none d-sm-inline" title={session.user.email ?? ""}>
                 {session.user.name}
               </span>
               <button
+                type="button"
                 className="btn btn-outline-secondary btn-sm"
                 onClick={() => signOut({ callbackUrl: "/" })}
               >
@@ -31,33 +34,43 @@ export default function NavBar() {
             </>
           ) : (
             <button
+                type="button"
               className="btn btn-primary btn-sm"
-              onClick={() => signIn("google")}
+                onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+                disabled={status === "loading"}
+                aria-label="Sign in with Google"
             >
-              Sign in
+                {status === "loading" ? "Preparing…" : "Sign in"}
             </button>
           )}
         </div>
 
-        {/* Toggler for nav links on mobile */}
+        {/* Toggler */}
         <button
           className="navbar-toggler order-lg-1"
           type="button"
           data-bs-toggle="collapse"
-          data-bs-target="#nav"
-          aria-controls="nav"
+          data-bs-target="#primaryNav"
+          aria-controls="primaryNav"
           aria-expanded="false"
           aria-label="Toggle navigation"
         >
           <span className="navbar-toggler-icon" />
         </button>
 
-        {/* Collapsible left-side links */}
-        <div className="collapse navbar-collapse order-lg-0" id="nav">
+        {/* Collapsible links */}
+        <div className="collapse navbar-collapse order-lg-0" id="primaryNav">
           <ul className="navbar-nav me-auto mb-2 mb-lg-0">
             <li className="nav-item">
-              <Link className="nav-link" href="/dashboard">Dashboard</Link>
+              <Link
+                href="/dashboard"
+                className={`nav-link${isActive("/dashboard") ? " active" : ""}`}
+                aria-current={isActive("/dashboard") ? "page" : undefined}
+              >
+                Dashboard
+              </Link>
             </li>
+            {/* Add more links here as you grow */}
           </ul>
         </div>
       </div>
