@@ -1,10 +1,10 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import DashboardClient from "./DashboardClient";
+import LibraryClient from "./LibraryClient";
 import { supabaseAnon } from "@/lib/supabaseServer";
 import type { DBBook } from "@/lib/types";
 
-export default async function DashboardPage() {
+export default async function LibraryPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return (
@@ -22,5 +22,5 @@ export default async function DashboardPage() {
     .eq("user_id", userId)
     .order("created_at", { ascending: false }) as { data: DBBook[] | null };
 
-  return <DashboardClient initialBooks={books} />;
+  return <LibraryClient initialBooks={books} />;
 }

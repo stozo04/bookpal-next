@@ -20,12 +20,26 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className="h-100">
       <body className="min-vh-100 text-body">
-        <ClientBootstrap /> {/* loads Bootstrap JS only in the browser */}
+        <ClientBootstrap />
         <Providers session={session}>
-          <NavBar />
-          <main className="container py-4">{children}</main>
-          <footer className="border-top mt-5 py-4 text-center text-muted">
-            <small>© {new Date().getFullYear()} Bookpal</small>
+          <div className="app-shell d-flex">
+            <NavBar />
+            <main className="container py-4">{children}</main>
+          </div>
+          <footer className="py-4 border-top site-footer">
+            <div className="container small d-flex flex-wrap justify-content-between align-items-center gap-3">
+              <div className="text-secondary">
+                © {new Date().getFullYear()} BookPal — Modern eReading
+              </div>
+              <nav className="d-flex gap-3">
+                <a className="link-secondary text-decoration-none" href="#">
+                  Privacy
+                </a>
+                <a className="link-secondary text-decoration-none" href="#">
+                  Terms
+                </a>
+              </nav>
+            </div>
           </footer>
         </Providers>
       </body>

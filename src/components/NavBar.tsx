@@ -3,16 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useSession, signIn, signOut } from "next-auth/react";
-import {
-  HouseFill,
-  Book,
-  Bookmark,
-  GearFill,
-  PersonCircle,
-  ChevronLeft,
-  ChevronRight
-} from 'react-bootstrap-icons';
+import { useSession, signOut } from "next-auth/react";
+import { Book, GearFill, PersonCircle, ChevronLeft, ChevronRight, Eyeglasses } from 'react-bootstrap-icons';
 import { useState, useEffect } from 'react';
 import { useRef } from 'react';
 
@@ -32,13 +24,6 @@ export default function NavBar() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Update main content margin when sidebar collapses
-  useEffect(() => {
-    const main = document.querySelector('main');
-    if (main) {
-      main.classList.toggle('sidebar-collapsed', isCollapsed);
-    }
-  }, [isCollapsed]);
 
   // Close user menu when clicking outside or on escape
   useEffect(() => {
@@ -66,37 +51,26 @@ export default function NavBar() {
 
   const isActive = (href: string) => pathname === href;
 
-  if (!session?.user) {
-    return (
-      <div className="d-flex justify-content-center align-items-center min-vh-100">
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-          disabled={status === "loading"}
-        >
-          {status === "loading" ? "Loading..." : "Sign in with Google"}
-        </button>
-      </div>
-    );
-  }
+  // Don't render the NavBar unless the user is signed in.
+  // While session is loading, also hide the NavBar to avoid UI flashes.
+  if (status === 'loading' || !session?.user) return null;
 
   return (
     <>
       <div
-        className={`d-flex flex-column flex-shrink-0 p-3 bg-light min-vh-100 sidebar ${isCollapsed ? 'collapsed' : ''
-          }`}
+        className={`d-flex flex-column flex-shrink-0 p-3 bg-light sidebar ${isCollapsed ? 'collapsed' : ''}`}
         style={{
           width: isCollapsed ? '70px' : '280px',
-          position: isMobile ? 'fixed' : 'relative',
+          position: isMobile ? 'fixed' : 'sticky',
+          top: isMobile ? undefined : 0,
           zIndex: 1030,
-          height: '100vh',
+          height: isMobile ? '100vh' : '100%',
           overflow: 'auto'
         }}
       >
         <div className="d-flex align-items-center mb-3 mb-md-0 me-md-auto">
           <Link href="/" className="d-flex align-items-center link-dark text-decoration-none">
-            <Book className="me-2" size={24} />
+            <Eyeglasses className="me-2" size={24} />
             <span className={`fs-4 ${isCollapsed ? 'd-none' : ''}`}>Bookpal</span>
           </Link>
           <button
@@ -111,31 +85,11 @@ export default function NavBar() {
         <ul className="nav nav-pills flex-column mb-auto">
           <li className="nav-item">
             <Link
-              href="/"
-              className={`nav-link ${isActive('/') ? 'active' : 'link-dark'}`}
-              title="Home"
-            >
-              <HouseFill className={isCollapsed ? 'mx-auto' : 'me-2'} />
-              <span className={isCollapsed ? 'd-none' : ''}>Home</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/dashboard"
-              className={`nav-link ${isActive('/dashboard') ? 'active' : 'link-dark'}`}
-              title="Dashboard"
-            >
-              <Book className={isCollapsed ? 'mx-auto' : 'me-2'} />
-              <span className={isCollapsed ? 'd-none' : ''}>Dashboard</span>
-            </Link>
-          </li>
-          <li>
-            <Link
               href="/library"
               className={`nav-link ${isActive('/library') ? 'active' : 'link-dark'}`}
               title="Library"
             >
-              <Bookmark className={isCollapsed ? 'mx-auto' : 'me-2'} />
+              <Book className={isCollapsed ? 'mx-auto' : 'me-2'} />
               <span className={isCollapsed ? 'd-none' : ''}>Library</span>
             </Link>
           </li>
@@ -154,9 +108,9 @@ export default function NavBar() {
             className="d-flex align-items-center link-dark text-decoration-none dropdown-toggle"
             data-bs-toggle={isCollapsed ? undefined : 'dropdown'}
             aria-expanded={isCollapsed ? !!userMenuOpen : undefined}
-            title={session.user.name ?? ''}
+            title={session.user?.name ?? ''}
           >
-            {session.user.image ? (
+            {session.user?.image ? (
               <Image
                 src={session.user.image}
                 alt=""
@@ -167,16 +121,10 @@ export default function NavBar() {
             ) : (
               <PersonCircle className="rounded-circle me-2" size={32} />
             )}
-            <strong className={isCollapsed ? 'd-none' : ''}>{session.user.name}</strong>
+            <strong className={isCollapsed ? 'd-none' : ''}>{session.user?.name}</strong>
           </a>
           {/* Standard bootstrap dropdown for expanded sidebar */}
           <ul className="dropdown-menu dropdown-menu-dark text-small shadow">
-            <li>
-              <Link href="/settings" className="dropdown-item">
-                <GearFill className="me-2" />
-                Settings
-              </Link>
-            </li>
             <li>
               <Link href="/profile" className="dropdown-item">
                 <PersonCircle className="me-2" />
@@ -194,8 +142,8 @@ export default function NavBar() {
             </li>
           </ul>
         </div>
-        {/* When collapsed, render a floating menu so items are readable */}
-        {isCollapsed && userMenuOpen && (
+        {/* When collapsed and user signed in, render a floating menu so items are readable */}
+        {session?.user && isCollapsed && userMenuOpen && (
           <div
             className="dropdown-menu show shadow"
             style={{

@@ -9,9 +9,15 @@
 /* Bootstrap gradient background for the whole page */
 html, body {
   height: 100%;
+  /* avoid accidental horizontal scroll when sidebar toggles */
+  overflow-x: hidden;
 }
 
+/* Make the document a column flex so footer doesn't push full-height pages off-screen */
 body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   /* replicate the soft slate→white gradient */
   background: linear-gradient(to bottom, #f8fafc 0%, #ffffff 60%);
   /* text color aligns with Bootstrap's default body color */
@@ -29,8 +35,9 @@ body {
 }
 
 /* Sidebar transitions */
+/* Sidebar + shell layout (flex) to avoid overlap/stacking issues */
 .sidebar {
-  transition: width 0.3s ease;
+  transition: flex-basis 0.3s ease, width 0.3s ease;
 }
 
 .sidebar .nav-link {
@@ -51,21 +58,95 @@ body {
   display: none;
 }
 
-/* Main content transition */
-main {
-  margin-left: 280px;
-  transition: margin-left 0.3s ease;
+/* Reduce horizontal padding when collapsed so total outer width fits */
+.sidebar.collapsed {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
-main.sidebar-collapsed {
-  margin-left: 70px;
+/* App shell uses flex so the sidebar and main sit side-by-side without overlap */
+
+.app-shell {
+  display: flex;
+  flex: 1 1 auto; /* fill the available space between header/footer */
+  min-height: 0; /* allow children to size correctly when using flex */
+  /* allow vertical scrolling inside the shell but prevent horizontal overflow */
+  overflow-x: hidden;
+  overflow-y: auto; /* ensure scrolling happens inside the shell so the footer stays visible */
+}
+
+.app-shell .sidebar {
+  flex: 0 0 280px; /* default sidebar width */
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 280px;
+}
+
+.app-shell .sidebar.collapsed {
+  flex: 0 0 70px; /* collapsed width */
+  max-width: 70px;
+}
+
+.app-shell main {
+  flex: 1 1 auto;
+  min-height: 0; /* important so children using height:100% don't overflow */
+  min-width: 0; /* allow the main column to shrink below its content to avoid overflow */
+}
+
+/* make sure main and shell never exceed viewport width */
+.app-shell, .app-shell main, .site-footer {
+  max-width: 100vw;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* Ensure sidebar content itself doesn't cause horizontal overflow */
+.sidebar {
+  overflow-x: hidden;
+}
+
+/* Footer should sit above the sidebar if any overlap happens */
+.site-footer {
+  position: relative;
+  z-index: 1100;
 }
 
 @media (max-width: 767.98px) {
-  main {
+  /* On small screens the sidebar becomes fixed and overlays content when open */
+  .app-shell .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 280px;
+    flex: 0 0 280px;
+    z-index: 1030;
+  }
+
+  .app-shell .sidebar.collapsed {
+    width: 70px;
+    flex: 0 0 70px;
+  }
+
+  .app-shell main {
+    /* keep main full width beneath a fixed sidebar on mobile */
+    flex: 1 1 auto;
     margin-left: 0;
   }
-  main.sidebar-collapsed {
-    margin-left: 0;
+}
+
+/* If the collapsed floating user menu appears on small screens, force it to align inside the viewport
+   The inline style uses left, so we override with !important here for narrow viewports to prevent overflow */
+@media (max-width: 420px) {
+  .dropdown-menu.show.shadow {
+    left: auto !important;
+    right: 8px !important;
+    min-width: 140px !important;
   }
+}
+
+/* Specific override for the collapsed sidebar element (matches the exact class list used)
+   This forces overflow-x hidden even if an inline style sets overflow-x:auto. */
+.d-flex.flex-column.flex-shrink-0.p-3.bg-light.sidebar.collapsed {
+  overflow-x: hidden !important;
 }

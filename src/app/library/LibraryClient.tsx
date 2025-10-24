@@ -6,7 +6,7 @@ import type { Book, DBBook } from "@/lib/types";
 
 type Props = { initialBooks?: DBBook[] };
 
-export default function DashboardClient({ initialBooks = [] }: Props) {
+export default function LibraryClient({ initialBooks = [] }: Props) {
   const [book, setBook] = useState<Book | null>(null);
   const [library, setLibrary] = useState<DBBook[]>(initialBooks ?? []);
 
