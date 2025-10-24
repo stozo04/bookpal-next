@@ -35,7 +35,7 @@ export default function NavBar() {
           ) : (
             <button
                 type="button"
-              className="btn btn-primary btn-sm"
+                className="btn btn-primary btn-sm"
                 onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
                 disabled={status === "loading"}
                 aria-label="Sign in with Google"
@@ -57,22 +57,6 @@ export default function NavBar() {
         >
           <span className="navbar-toggler-icon" />
         </button>
-
-        {/* Collapsible links */}
-        <div className="collapse navbar-collapse order-lg-0" id="primaryNav">
-          <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-            <li className="nav-item">
-              <Link
-                href="/dashboard"
-                className={`nav-link${isActive("/dashboard") ? " active" : ""}`}
-                aria-current={isActive("/dashboard") ? "page" : undefined}
-              >
-                Dashboard
-              </Link>
-            </li>
-            {/* Add more links here as you grow */}
-          </ul>
-        </div>
       </div>
     </nav>
   );

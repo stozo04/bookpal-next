@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { structureBookFromText } from "@/lib/openai";
-import { supabaseAdmin } from "@/lib/supabaseServer";
+import { supabaseAnon } from "@/lib/supabaseServer";
 import type { Book, DBBook } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -13,7 +13,10 @@ export async function POST(req: Request) {
     const session = await getServerSession(authOptions);
     const userId = (session?.user as any)?.id;
     if (!userId) {
-      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
     // Parse text or file
@@ -27,20 +30,33 @@ export async function POST(req: Request) {
 
       if (file) {
         if (file.size > ONE_MB) {
-          return NextResponse.json({ ok: false, error: "File too large (>1MB). Chunking soon." }, { status: 400 });
+          return NextResponse.json(
+            { ok: false, error: "File too large (>1MB). Chunking soon." },
+            { status: 400 }
+          );
         }
         text = await file.text();
       } else if (typeof textField === "string" && textField.length > 0) {
         text = textField;
       } else {
-        return NextResponse.json({ ok: false, error: "No file or text provided." }, { status: 400 });
+        return NextResponse.json(
+          { ok: false, error: "No file or text provided." },
+          { status: 400 }
+        );
       }
     } else {
       const body = await req.json().catch(() => ({}));
       text = body?.text || "";
-      if (!text) return NextResponse.json({ ok: false, error: "Missing text." }, { status: 400 });
+      if (!text)
+        return NextResponse.json(
+          { ok: false, error: "Missing text." },
+          { status: 400 }
+        );
       if (text.length > ONE_MB) {
-        return NextResponse.json({ ok: false, error: "Text too large (>1MB). Chunking soon." }, { status: 400 });
+        return NextResponse.json(
+          { ok: false, error: "Text too large (>1MB). Chunking soon." },
+          { status: 400 }
+        );
       }
     }
 
@@ -48,7 +64,7 @@ export async function POST(req: Request) {
     const book: Book = await structureBookFromText(text);
 
     // Persist
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabaseAnon
       .from("books")
       .insert({
         user_id: userId,
@@ -65,6 +81,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, bookId: data.id, book: data });
   } catch (e: any) {
     console.error("structure error:", e);
-    return NextResponse.json({ ok: false, error: e?.message || "Failed to structure/save" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message || "Failed to structure/save" },
+      { status: 500 }
+    );
   }
 }

@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import DashboardClient from "./DashboardClient";
-import { supabaseAdmin } from "@/lib/supabaseServer";
+import { supabaseAnon } from "@/lib/supabaseServer";
 import type { DBBook } from "@/lib/types";
 
 export default async function DashboardPage() {
@@ -16,7 +16,7 @@ export default async function DashboardPage() {
   }
   const userId = (session.user as any).id;
 
-  const { data: books = [] } = await supabaseAdmin
+  const { data: books = [] } = await supabaseAnon
     .from("books")
     .select("*")
     .eq("user_id", userId)
