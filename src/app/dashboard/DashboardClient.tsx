@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import UploadDrop from "@/components/UploadDrop";
-import type { Book } from "@/lib/types";
+import type { Book, DBBook } from "@/lib/types";
 
-type Props = { initialBooks?: any[] };
+type Props = { initialBooks?: DBBook[] };
 
 export default function DashboardClient({ initialBooks = [] }: Props) {
   const [book, setBook] = useState<Book | null>(null);
-  const [library, setLibrary] = useState<any[]>(initialBooks);
+  const [library, setLibrary] = useState<DBBook[]>(initialBooks ?? []);
 
   return (
     <div className="row g-4">
@@ -54,7 +54,7 @@ export default function DashboardClient({ initialBooks = [] }: Props) {
             <p className="text-secondary mb-0">No books yet.</p>
           ) : (
             <div className="row g-3">
-              {library.map((b: any) => (
+                {library.map((b) => (
                 <div className="col-12" key={b.id}>
                   <div className="border rounded-4 p-3 d-flex justify-content-between align-items-center">
                     <div>

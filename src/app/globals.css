@@ -28,6 +28,44 @@ body {
   filter: brightness(0.95);
 }
 
-/* Optional: container max-width polish if desired
-.container { max-width: 960px; }
-*/
+/* Sidebar transitions */
+.sidebar {
+  transition: width 0.3s ease;
+}
+
+.sidebar .nav-link {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.sidebar.collapsed .nav-link {
+  justify-content: center;
+}
+
+.sidebar.collapsed .nav-link > *:not(:first-child) {
+  display: none;
+}
+
+.sidebar.collapsed .dropdown-toggle::after {
+  display: none;
+}
+
+/* Main content transition */
+main {
+  margin-left: 280px;
+  transition: margin-left 0.3s ease;
+}
+
+main.sidebar-collapsed {
+  margin-left: 70px;
+}
+
+@media (max-width: 767.98px) {
+  main {
+    margin-left: 0;
+  }
+  main.sidebar-collapsed {
+    margin-left: 0;
+  }
+}
