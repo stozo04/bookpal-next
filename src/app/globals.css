@@ -60,6 +60,8 @@ body {
   color: var(--bs-body-color);
   border-radius: 0.5rem;
 }
+/* Ensure consistent horizontal inset with brand */
+.sidebar .nav-link { padding-left: 1rem; padding-right: 1rem; }
 
 .sidebar .nav-link:hover {
   background-color: rgba(2, 6, 23, 0.04);
@@ -75,9 +77,32 @@ body {
   background-color: rgba(37, 99, 235, 0.18);
 }
 
+/* Improve dark mode link readability */
+[data-bs-theme="dark"] .sidebar .nav-link:not(.active) {
+  color: var(--bs-secondary-color);
+}
+[data-bs-theme="dark"] .sidebar .nav-link:not(.active):hover {
+  color: var(--bs-body-color);
+}
+
+/* Prevent toggle button overlap by reserving width and aligning */
+.sidebar .toggle-btn {
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+}
+
+/* Position the collapsed user flyout neatly */
+.sidebar .user-flyout {
+  min-width: 180px;
+  transform: translateY(-8px);
+  z-index: 1045;
+}
+
 .sidebar.collapsed .nav-link {
   justify-content: center;
 }
+.sidebar.collapsed .brand-toggle { justify-content: center; padding-left: 0; padding-right: 0; }
 
 .sidebar.collapsed .nav-link > *:not(:first-child) {
   display: none;
@@ -137,9 +162,9 @@ body {
   overflow-x: hidden;
 }
 
-/* Ensure sidebar content itself doesn't cause horizontal overflow */
+/* Ensure sidebar content/flyouts can show; still avoid horizontal scroll in app-shell */
 .sidebar {
-  overflow-x: hidden;
+  overflow: visible;
 }
 
 /* Footer should sit above the sidebar if any overlap happens */
@@ -254,5 +279,32 @@ body {
 @media (max-width: 767.98px) {
   .book-card { min-width: 120px !important; }
   .book-poster { height: 180px !important; }
+}
+
+/* --- Sidebar tweaks (additional) --- */
+/* Hide the middle menu divider when collapsed */
+.sidebar.collapsed .menu-divider { display: none; }
+/* Keep the top brand divider visible at all times */
+.sidebar .menu-divider-top { display: block; }
+
+/* Remove any unwanted borders/backgrounds from user button area */
+.sidebar .dropdown > .dropdown-toggle {
+  box-shadow: none !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+/* Simple avatar circle with initials (used when no profile image) */
+.avatar-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(180deg, #a7287f, #b14770);
 }
 

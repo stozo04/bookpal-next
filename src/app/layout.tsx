@@ -19,7 +19,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const session = (await getServerSession(authOptions as any)) as Session | null;
 
   return (
-    <html lang="en" className="h-100">
+    <html lang="en" className="h-100" suppressHydrationWarning>
       <body className="min-vh-100 text-body">
         {/* Bootstrap color mode SSR init: set data-bs-theme before hydration to avoid flash */}
         <script
