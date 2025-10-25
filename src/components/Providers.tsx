@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import type { ReactNode } from "react";
 import type { Session } from "next-auth";
 import { LibraryProvider } from "@/context/LibraryContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 
 export default function Providers({
     children,
@@ -15,7 +16,9 @@ export default function Providers({
 }) {
     return (
         <SessionProvider session={session}>
-            <LibraryProvider>{children}</LibraryProvider>
+            <ThemeProvider>
+                <LibraryProvider>{children}</LibraryProvider>
+            </ThemeProvider>
         </SessionProvider>
     );
 }

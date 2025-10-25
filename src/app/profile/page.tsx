@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import type { DefaultSession } from "next-auth";
-import { PersonCircle, MoonStars } from "react-bootstrap-icons";
+import { PersonCircle } from "react-bootstrap-icons";
+import ThemeToggle from "@/components/ThemeToggle";
 
 function getInitials(name?: string | null) {
   if (!name) return "U";
@@ -15,7 +16,7 @@ function getInitials(name?: string | null) {
 }
 
 export default async function ProfilePage() {
-  const session = (await getServerSession(authOptions)) as DefaultSession;
+  const session = (await getServerSession(authOptions as any)) as DefaultSession;
 
   if (!session) {
     redirect("/api/auth/signin");
@@ -115,16 +116,8 @@ export default async function ProfilePage() {
               <div className="h-100 p-4 p-md-5 rounded-4 border bg-white shadow-sm">
                 <h5 className="mb-4">Theme & Display</h5>
 
-                {/* Dark Mode (disabled) */}
-                <div className="d-flex align-items-center justify-content-between mb-3">
-                  <div className="d-flex align-items-center gap-2">
-                    <MoonStars className="text-secondary" />
-                    <span>Dark Mode</span>
-                  </div>
-                  <div className="form-check form-switch mb-0">
-                    <input className="form-check-input" type="checkbox" role="switch" disabled />
-                  </div>
-                </div>
+                {/* Dark Mode Toggle */}
+                <ThemeToggle />
 
                 {/* Page Width (disabled) */}
                 <div className="mb-3">

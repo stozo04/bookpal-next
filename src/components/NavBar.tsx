@@ -5,8 +5,11 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { Book, GearFill, PersonCircle, ChevronLeft, ChevronRight, Eyeglasses, CloudUpload } from 'react-bootstrap-icons';
-import { useState, useEffect } from 'react';
-import { useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+// Bootstrap tooltip support (loaded client-side only)
+// Importing from 'bootstrap' is safe because ClientBootstrap loads the bundle in the browser
+// Types are optional; runtime import is handled by Next on client
+import { Tooltip } from "bootstrap";
 
 export default function NavBar() {
   const { data: session, status } = useSession();
@@ -15,6 +18,7 @@ export default function NavBar() {
   const [isMobile, setIsMobile] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userTriggerRef = useRef<HTMLAnchorElement | null>(null);
+  const tooltipInstancesRef = useRef<Tooltip[]>([]);
 
   // Check if we're on mobile on mount and when window resizes
   useEffect(() => {
@@ -49,7 +53,33 @@ export default function NavBar() {
     };
   }, [userMenuOpen]);
 
-  const isActive = (href: string) => pathname === href;
+  const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
+
+  const navItems = useMemo(
+    () => [
+      { href: "/library", label: "Library", Icon: Book },
+      { href: "/uploads", label: "Uploads", Icon: CloudUpload },
+    ],
+    []
+  );
+
+  // Initialize tooltips for collapsed navigation items
+  useEffect(() => {
+    // dispose any existing tooltips
+    tooltipInstancesRef.current.forEach((t) => t.dispose());
+    tooltipInstancesRef.current = [];
+    if (!isCollapsed) return;
+    const selector = document.querySelectorAll('[data-bs-toggle="tooltip"][data-sidebar]');
+    selector.forEach((el) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const instance = new Tooltip(el as any, { placement: 'right', trigger: 'hover focus' });
+      tooltipInstancesRef.current.push(instance);
+    });
+    return () => {
+      tooltipInstancesRef.current.forEach((t) => t.dispose());
+      tooltipInstancesRef.current = [];
+    };
+  }, [isCollapsed]);
 
   // Don't render the NavBar unless the user is signed in.
   // While session is loading, also hide the NavBar to avoid UI flashes.
@@ -57,48 +87,51 @@ export default function NavBar() {
 
   return (
     <>
-      <div
-        className={`d-flex flex-column flex-shrink-0 p-3 bg-light sidebar ${isCollapsed ? 'collapsed' : ''}`}
-
+      <nav
+        className={`d-flex flex-column flex-shrink-0 p-3 bg-white sidebar border-end shadow-sm ${isCollapsed ? 'collapsed' : ''}`}
+        role="navigation"
+        aria-label="Sidebar"
       >
         <div className="d-flex align-items-center mb-3 mb-md-0 me-md-auto">
           <Link href="/" className="d-flex align-items-center link-dark text-decoration-none">
-            <Eyeglasses className="me-2" size={24} />
-            <span className={`fs-4 ${isCollapsed ? 'd-none' : ''}`}>Bookpal</span>
+            <Eyeglasses className="me-2 text-primary" size={24} />
+            <span className={`fw-semibold ${isCollapsed ? 'd-none' : ''}`}>Bookpal</span>
           </Link>
           <button
-            className="btn btn-link ms-auto p-0 d-none d-md-block text-dark"
+            className="btn btn-outline-secondary btn-sm ms-auto d-inline-flex align-items-center"
             onClick={() => setIsCollapsed(!isCollapsed)}
             aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            type="button"
           >
-            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+            {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
         </div>
-        <hr />
-        <ul className="nav nav-pills flex-column mb-auto">
-          <li className="nav-item">
-            <Link
-              href="/library"
-              className={`nav-link ${isActive('/library') ? 'active' : 'link-dark'}`}
-              title="Library"
-            >
-              <Book className={isCollapsed ? 'mx-auto' : 'me-2'} />
-              <span className={isCollapsed ? 'd-none' : ''}>Library</span>
-            </Link>
-          </li>
-          <li className="nav-item">
-            <Link
-              href="/uploads"
-              className={`nav-link ${isActive('/uploads') ? 'active' : 'link-dark'}`}
-              title="Uploads"
-            >
-              <CloudUpload className={isCollapsed ? 'mx-auto' : 'me-2'} />
-              <span className={isCollapsed ? 'd-none' : ''}>Uploads</span>
-            </Link>
-          </li>
+        <hr className="my-3" />
+        <ul className="nav nav-pills flex-column mb-auto gap-1">
+          {navItems.map(({ href, label, Icon }) => {
+            const active = isActive(href);
+            const linkClass = `nav-link d-flex align-items-center gap-2 rounded-3 px-3 py-2 ${active ? 'active' : 'link-body-emphasis'}`;
+            const iconClass = isCollapsed ? 'mx-auto' : '';
+            const collapsedAttrs = isCollapsed
+              ? { 'data-bs-toggle': 'tooltip', 'data-bs-placement': 'right', title: label, 'data-sidebar': '1' }
+              : {};
+            return (
+              <li className="nav-item" key={href}>
+                <Link
+                  href={href}
+                  className={linkClass}
+                  aria-current={active ? 'page' : undefined}
+                  {...collapsedAttrs}
+                >
+                  <Icon className={iconClass} />
+                  <span className={isCollapsed ? 'd-none' : ''}>{label}</span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
-        <hr />
-        <div className="dropdown position-relative">
+        <hr className="my-3" />
+        <div className="dropdown position-relative mt-auto">
           <a
             href="#"
             ref={userTriggerRef}
@@ -127,7 +160,7 @@ export default function NavBar() {
             <strong className={isCollapsed ? 'd-none' : ''}>{session.user?.name}</strong>
           </a>
           {/* Standard bootstrap dropdown for expanded sidebar */}
-          <ul className="dropdown-menu dropdown-menu-dark text-small shadow">
+          <ul className="dropdown-menu dropdown-menu-end text-small shadow">
             <li>
               <Link href="/profile" className="dropdown-item">
                 <PersonCircle className="me-2" />
@@ -164,7 +197,7 @@ export default function NavBar() {
             </button>
           </div>
         )}
-      </div>
+      </nav>
       {isMobile && !isCollapsed && (
         <div
           className="position-fixed top-0 start-0 w-100 h-100 bg-dark opacity-50"

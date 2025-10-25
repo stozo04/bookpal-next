@@ -3,6 +3,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import "./globals.css";
 import type { Metadata } from "next";
 import Providers from "@/components/Providers";
+import type { Session } from "next-auth";
 import NavBar from "@/components/NavBar";
 import ClientBootstrap from "@/components/ClientBootstrap";
 
@@ -15,11 +16,17 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
+  const session = (await getServerSession(authOptions as any)) as Session | null;
 
   return (
     <html lang="en" className="h-100">
       <body className="min-vh-100 text-body">
+        {/* Bootstrap color mode SSR init: set data-bs-theme before hydration to avoid flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(() => { try { var d = document.documentElement; var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; d.setAttribute('data-bs-theme', dark ? 'dark' : 'light'); } catch (e) {} })();`,
+          }}
+        />
         <ClientBootstrap />
         <Providers session={session}>
           <div className="app-shell d-flex">

@@ -24,6 +24,11 @@ body {
   color: var(--bs-body-color);
 }
 
+/* Dark mode background gradient and minor tweaks */
+[data-bs-theme="dark"] body {
+  background: linear-gradient(to bottom, #0b1220 0%, #0e1626 60%);
+}
+
 /* Primary button tint to your brand */
 .btn-primary {
   background-color: var(--brand);
@@ -34,16 +39,40 @@ body {
   filter: brightness(0.95);
 }
 
+/* Card and surface styling adapt to Bootstrap variables */
+.border { border-color: var(--bs-border-color) !important; }
+.bg-white { background-color: var(--bs-body-bg) !important; }
+.bg-body-tertiary { background-color: var(--bs-tertiary-bg) !important; }
+.shadow-sm { box-shadow: var(--bs-box-shadow-sm) !important; }
+
 /* Sidebar transitions */
 /* Sidebar + shell layout (flex) to avoid overlap/stacking issues */
 .sidebar {
-  transition: flex-basis 0.3s ease, width 0.3s ease;
+  transition: flex-basis 0.25s ease, width 0.25s ease, box-shadow 0.25s ease;
+  background-color: #ffffff;
 }
+[data-bs-theme="dark"] .sidebar { background-color: var(--bs-body-bg); }
 
 .sidebar .nav-link {
   display: flex;
   align-items: center;
   white-space: nowrap;
+  color: var(--bs-body-color);
+  border-radius: 0.5rem;
+}
+
+.sidebar .nav-link:hover {
+  background-color: rgba(2, 6, 23, 0.04);
+  color: var(--bs-body-color);
+}
+
+.sidebar .nav-link.active {
+  background-color: rgba(37, 99, 235, 0.12);
+  color: var(--brand);
+  font-weight: 600;
+}
+[data-bs-theme="dark"] .sidebar .nav-link.active {
+  background-color: rgba(37, 99, 235, 0.18);
 }
 
 .sidebar.collapsed .nav-link {
@@ -85,6 +114,14 @@ body {
 .app-shell .sidebar.collapsed {
   flex: 0 0 70px; /* collapsed width */
   max-width: 70px;
+}
+
+/* Sidebar header button visuals */
+.sidebar .btn.btn-outline-secondary.btn-sm {
+  border-color: rgba(2, 6, 23, 0.12);
+}
+.sidebar .btn.btn-outline-secondary.btn-sm:hover {
+  background-color: rgba(2, 6, 23, 0.04);
 }
 
 .app-shell main {

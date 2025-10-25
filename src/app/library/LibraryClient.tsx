@@ -33,8 +33,7 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
               <div className="text-secondary small">A tidy view of your books</div>
             </div>
             <div>
-              <Link href="/uploads" className="btn btn-outline-secondary me-2">Upload</Link>
-              <Link href="/library" className="btn btn-primary">Browse all</Link>
+              <Link href="/uploads" className="btn btn-outline-secondary me-2">Add Book</Link>
             </div>
           </div>
         </div>
