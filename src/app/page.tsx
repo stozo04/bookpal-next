@@ -18,6 +18,7 @@ import {
   Image as ImageIcon,
   FileEarmarkText,
 } from "react-bootstrap-icons";
+import PublicThemeToggle from "@/components/PublicThemeToggle";
 
 export default function HomePage() {
   const { data: session, status } = useSession();
@@ -54,59 +55,83 @@ export default function HomePage() {
     </>
   );
 
+  const marquee = (
+    <section className="feature-marquee py-3 border-top border-bottom">
+      <div className="container">
+        <div className="marquee" aria-hidden>
+          <div className="marquee-track">
+            {[ 
+              { icon: <Stars size={16} />, label: "Chapter summaries" },
+              { icon: <Diagram3 size={16} />, label: "Character graphs" },
+              { icon: <Search size={16} />, label: "Smart search" },
+              { icon: <ImageIcon size={16} />, label: "Scene visuals" },
+              { icon: <FileEarmarkText size={16} />, label: "Notes & quotes" },
+              { icon: <LightningCharge size={16} />, label: "Snappy UI" },
+              { icon: <ShieldLock size={16} />, label: "Private by default" },
+            ]
+              .concat([
+                { icon: <Stars size={16} />, label: "Chapter summaries" },
+                { icon: <Diagram3 size={16} />, label: "Character graphs" },
+                { icon: <Search size={16} />, label: "Smart search" },
+                { icon: <ImageIcon size={16} />, label: "Scene visuals" },
+                { icon: <FileEarmarkText size={16} />, label: "Notes & quotes" },
+                { icon: <LightningCharge size={16} />, label: "Snappy UI" },
+                { icon: <ShieldLock size={16} />, label: "Private by default" },
+              ])
+              .map((f, i) => (
+                <span key={i} className="feature-pill">
+                  {f.icon} <span className="ms-1">{f.label}</span>
+                </span>
+              ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+
   return (
     <div className="container-fluid px-0">
       {/* HERO */}
-      <section
-        className="py-5 py-lg-6 position-relative overflow-hidden"
-        style={{
-          background:
-            "radial-gradient(1100px 600px at 10% -10%, rgba(13,110,253,.15), transparent 60%), radial-gradient(1100px 600px at 110% 10%, rgba(111,66,193,.12), transparent 60%)",
-        }}
-      >
-        <div className="container">
+      <section className="hero-gradient position-relative overflow-hidden py-5 py-lg-6">
+        <div className="container position-relative" style={{ zIndex: 1 }}>
+          <div className="d-flex justify-content-end mb-3">
+            <PublicThemeToggle />
+          </div>
           <div className="row align-items-center g-5">
-            <div className="col-lg-12">
-              <h1 className="display-4 fw-bold lh-tight mb-3">
-                Read smarter. <span className="text-primary">Remember more.</span>
+            <div className="col-lg-7">
+              <h1 className="display-4 fw-bold lh-tight mb-3 hero-heading">
+                Read smarter.
+                <br />
+                <span className="text-gradient">Remember more.</span>
               </h1>
               <p className="lead text-secondary mb-4">
-                BookPal intelligently transforms your books into clean chapters, living notes,
-                character graphs, and context-aware summaries—so you keep the vibe of reading while
-                gaining the power of an AI research assistant.
+                Turn every book into living notes, chapter summaries, and character maps—all in one
+                beautiful place.
               </p>
-
               <div className="d-flex flex-wrap align-items-center gap-3">
                 {CTA}
                 <a href="#how-it-works" className="btn btn-outline-secondary btn-lg px-4 py-3">
                   See how it works
                 </a>
               </div>
-            </div>
-          </div>
-          <div className="row">
-            <div className="col-lg-12">
-
-              {/* System Check
-              <div className="mt-3">
-                <div className="p-3 rounded-4 border bg-white shadow-sm">
-                  <h6 className="mb-2">Quick System Check</h6>
-                  <ul className="mb-0 list-unstyled small">
-                    <li className="mb-1">Next.js running ✔</li>
-                    <li className="mb-1">Bootstrap loaded ✔</li>
-                    <li>
-                      API Ping:{" "}
-                      <a href="/api/openai/ping">
-                        <code>/api/openai/ping</code>
-                      </a>
-                    </li>
-                  </ul>
-                </div>
+              {/* <div className="d-flex flex-wrap gap-3 mt-4 small text-secondary">
+                <span className="badge text-bg-light border">No clutter</span>
+                <span className="badge text-bg-light border">AI-assisted</span>
+                <span className="badge text-bg-light border">Private by default</span>
               </div> */}
             </div>
+            <div className="col-lg-5">
+              <div className="p-3 p-lg-4 rounded-4 border bg-white shadow-sm hero-card">
+                <div className="ratio ratio-16x9 rounded-4 mb-0" style={{
+                  background:
+                    "linear-gradient(180deg, rgba(37,99,235,.22), rgba(111,66,193,.22))",
+                }} />
+                <div className="small text-secondary mt-3">Clean reading UI</div>
+              </div>
+            </div>
           </div>
 
-          {/* Social proof */}
+          {/* Trust strip */}
           <div className="row row-cols-2 row-cols-md-4 g-3 g-md-4 mt-5 text-center text-secondary">
             <div className="col">
               <div className="p-3 rounded-3 border bg-white">
@@ -134,107 +159,113 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+        <div className="hero-blur" />
       </section>
+
+      {marquee}
 
       {/* FEATURES */}
-      <section className="py-5 bg-body-tertiary">
+      <section id="essentials" className="py-5 bg-body-tertiary section-essentials">
         <div className="container">
           <div className="text-center mb-4">
-            <h2 className="fw-bold mt-2">Features that feel like magic</h2>
-            <p className="text-secondary">Bringing intelligence to your books.</p>
+            <h2 className="fw-bold mt-2">Everything you need to read smarter</h2>
+            <p className="text-secondary">Focus on the book; we handle the rest.</p>
           </div>
 
           <div className="row g-4">
-            <Feature
-              icon={<Stars size={22} />}
-              title="Summarize Chapters"
-              text="Concise, context-aware chapter summaries so you can review fast without losing nuance."
-            />
-            <Feature
-              icon={<PersonSquare size={22} />}
-              title="Character Profiles (with Images)"
-              text="Auto-build character profiles and generate visuals from in-book descriptions."
-            />
-            <Feature
-              icon={<Diagram3 size={22} />}
-              title="Character Relationship Diagrams"
-              text="For complex casts, see who’s connected to whom—at-a-glance relationship graphs."
-            />
-            <Feature
-              icon={<Search size={22} />}
-              title="Word Lookup"
-              text="Look up words inline—definitions, usage, and quick context without breaking flow."
-            />
-            <Feature
-              icon={<ImageIcon size={22} />}
-              title="Visualize Scene"
-              text="Bring moments to life with images that match the tone and details of the scene."
-            />
-            <Feature
-              icon={<FileEarmarkText size={22} />}
-              title="Summarize Complex Paragraphs"
-              text="Turn dense passages into crisp, faithful explanations you can actually remember."
-            />
+            <Feature icon={<Stars size={22} />} title="Stay in flow" text="Chapters become clean, skimmable notes without breaking your reading rhythm." />
+            <Feature icon={<FileEarmarkText size={22} />} title="Keep what matters" text="Highlights and summaries live together—easy to review later." />
+            <Feature icon={<Search size={22} />} title="Find context fast" text="Characters, places, and references linked exactly where you need them." />
           </div>
         </div>
       </section>
 
-      {/* HOW IT WORKS */}
-      <section id="how-it-works" className="py-5">
+      {/* HOW IT WORKS (lean) */}
+      <section id="how-it-works" className="py-5 section-how">
         <div className="container">
           <div className="text-center mb-4">
-
-            <h2 className="fw-bold mt-2">From upload to insight—fast</h2>
+            <h2 className="fw-bold mt-2">Three steps. Done.</h2>
+            <p className="text-secondary">Upload. Auto-organize. Read & ask.</p>
           </div>
-
           <div className="row g-4">
-            <Step
-              number="1"
-              title="Upload or paste a link"
-              text="Bring a PDF or EPUB—or just a public link. We clean, parse, and prep it for deep reading."
-            />
-            <Step
-              number="2"
-              title="Auto-chapter & profiles"
-              text="We split chapters, build character/location profiles, and map references as you read."
-            />
-            <Step
-              number="3"
-              title="Read & ask"
-              text="Stay in flow. Summaries, recalls, and answers stay grounded to your book and notes."
-            />
+            <Step number="1" title="Upload" text="Bring a PDF, EPUB, or link." />
+            <Step number="2" title="Auto-organize" text="Chapters, notes, and profiles appear." />
+            <Step number="3" title="Read & ask" text="Stay in flow with instant context." />
           </div>
         </div>
       </section>
 
-      {/* TESTIMONIALS / TRUST */}
-      <section className="py-5 bg-body-tertiary">
+      {/* TESTIMONIALS / TRUST (temporarily hidden)
+      <section className="py-5 bg-body-tertiary section-trust">
         <div className="container">
           <div className="row g-4 align-items-stretch">
             <TrustCard
               icon={<People size={20} />}
-              title="Loved by learners"
+              title="Readers first"
               text="“It feels like a research buddy who organizes my brain while I actually enjoy the book.”"
               meta="Early access reader"
-            />
-            <TrustCard
-              icon={<LightningCharge size={20} />}
-              title="Built for speed"
-              text="No dragging files between apps. Reading, notes, and recall live together."
-              meta="Fewer clicks, more focus"
-            />
-            <TrustCard
-              icon={<ShieldLock size={20} />}
-              title="Transparent privacy"
-              text="Your content stays yours. Clear controls and export-friendly formats."
-              meta="You’re in control"
             />
           </div>
         </div>
       </section>
+      */}
+
+      {/* PRICING PREVIEW (temporarily hidden)
+      <section className="py-5 section-pricing">
+        <div className="container">
+          <div className="text-center mb-4">
+            <h2 className="fw-bold mt-2">Simple, friendly pricing</h2>
+            <p className="text-secondary">Start free. Upgrade when you’re ready.</p>
+          </div>
+          <div className="row g-4 align-items-stretch">
+            <div className="col-md-6">
+              <div className="h-100 p-4 rounded-4 border bg-white shadow-sm">
+                <h5 className="mb-1">Free</h5>
+                <div className="display-6 fw-bold mb-3">$0</div>
+                <ul className="small text-secondary mb-3">
+                  <li>Core reader</li>
+                  <li>Notes & highlights</li>
+                  <li>Limited summaries</li>
+                </ul>
+                <a className="btn btn-outline-primary" href="#">Get started</a>
+              </div>
+            </div>
+            <div className="col-md-6">
+              <div className="h-100 p-4 rounded-4 border bg-white shadow-sm">
+                <h5 className="mb-1">Pro</h5>
+                <div className="display-6 fw-bold mb-3">$9<span className="fs-6 fw-semibold">/mo</span></div>
+                <ul className="small text-secondary mb-3">
+                  <li>Unlimited summaries</li>
+                  <li>Character graphs</li>
+                  <li>Priority processing</li>
+                </ul>
+                <a className="btn btn-primary" href="#">Go Pro</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      */}
+
+      {/* CTA BAND (temporarily hidden)
+      <section className="py-5 cta-band">
+        <div className="container">
+          <div className="p-4 p-md-5 rounded-4 border bg-white shadow-sm d-flex flex-column flex-lg-row align-items-center justify-content-between gap-3">
+            <div>
+              <h3 className="mb-1">Start reading smarter today</h3>
+              <p className="mb-0 text-secondary">Join readers who turn books into lasting insights.</p>
+            </div>
+            <div className="d-flex flex-wrap gap-2">
+              {CTA}
+              <a href="#how-it-works" className="btn btn-outline-secondary btn-lg px-4 py-3">How it works</a>
+            </div>
+          </div>
+        </div>
+      </section>
+      */}
 
 
-      {/* FAQ */}
+      {/* FAQ (temporarily hidden)
       <section className="py-5">
         <div className="container">
           <div className="text-center mb-4">
@@ -248,6 +279,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      */}
 
 
     </div>
@@ -267,9 +299,9 @@ function Feature({
 }) {
   return (
     <div className="col-md-6 col-lg-4">
-      <div className="h-100 p-4 rounded-4 border bg-white shadow-sm">
+      <div className="h-100 p-4 rounded-4 border bg-white shadow-sm feature-card">
         <div className="d-flex align-items-center gap-2 mb-2">
-          <div className="btn btn-sm btn-primary-subtle border rounded-circle p-2">
+          <div className="btn btn-sm btn-primary-subtle border rounded-circle p-2 feature-icon">
             {icon}
           </div>
           <h5 className="mb-0">{title}</h5>
@@ -291,7 +323,7 @@ function Step({
 }) {
   return (
     <div className="col-lg-4">
-      <div className="h-100 p-4 rounded-4 border bg-white">
+      <div className="h-100 p-4 rounded-4 border bg-white how-card">
         <div className="d-flex align-items-center gap-3 mb-2">
           <div className="fw-bold fs-5 badge text-bg-primary rounded-pill px-3 py-2">
             {number}
@@ -317,7 +349,7 @@ function TrustCard({
 }) {
   return (
     <div className="col-md-4">
-      <div className="h-100 p-4 rounded-4 border bg-white">
+      <div className="h-100 p-4 rounded-4 border bg-white trust-card">
         <div className="d-flex align-items-center gap-2 mb-2">
           {icon} <h6 className="mb-0">{title}</h6>
         </div>
@@ -340,3 +372,5 @@ function FAQ({ q, a }: { q: string; a: string }) {
     </div>
   );
 }
+
+// (HeroCarousel removed for a calmer, static visual)

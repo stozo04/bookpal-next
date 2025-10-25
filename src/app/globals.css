@@ -34,6 +34,9 @@ body {
   background-color: var(--brand);
   border-color: var(--brand);
 }
+.btn-outline-secondary.btn-sm.rounded-pill {
+  border-color: var(--bs-border-color);
+}
 .btn-primary:hover,
 .btn-primary:focus {
   filter: brightness(0.95);
@@ -44,6 +47,71 @@ body {
 .bg-white { background-color: var(--bs-body-bg) !important; }
 .bg-body-tertiary { background-color: var(--bs-tertiary-bg) !important; }
 .shadow-sm { box-shadow: var(--bs-box-shadow-sm) !important; }
+
+/* Landing hero */
+.hero-gradient {
+  background:
+    radial-gradient(1100px 600px at 10% -10%, rgba(13,110,253,.15), transparent 60%),
+    radial-gradient(1100px 600px at 110% 10%, rgba(111,66,193,.12), transparent 60%);
+  position: relative;
+}
+.hero-blur {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 60%;
+  background: radial-gradient(800px 400px at 50% 0%, rgba(37,99,235,.18), transparent 60%);
+  filter: blur(40px);
+  pointer-events: none;
+}
+.hero-heading { letter-spacing: -0.02em; }
+.text-gradient {
+  background: linear-gradient(90deg, #2563eb, #8b5cf6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero-card { backdrop-filter: saturate(1.05); }
+
+/* (carousel styles removed for lean hero) */
+
+/* Slim feature marquee */
+.feature-marquee { background-color: var(--bs-body-bg); }
+.feature-marquee .marquee { overflow: hidden; white-space: nowrap; }
+.feature-marquee .marquee-track { display: inline-block; animation: marquee-slide 20s linear infinite; }
+.feature-marquee .feature-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  padding: 6px 10px;
+  border-radius: 999px;
+  margin-right: 12px;
+  color: var(--bs-secondary-color);
+}
+@keyframes marquee-slide {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@media (max-width: 575.98px) {
+  /* Hide marquee on small screens for calmer landing */
+  .feature-marquee { display: none; }
+}
+
+/* Landing sections polish */
+.section-features .feature-card:hover,
+.section-how .how-card:hover,
+.section-trust .trust-card:hover,
+.cta-band .border:hover {
+  box-shadow: 0 18px 60px rgba(2,6,23,0.12);
+  transform: translateY(-2px);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.feature-icon { background: linear-gradient(180deg, rgba(37,99,235,.12), rgba(111,66,193,.12)); }
+
+/* Ensure badges in hero card are readable in both themes */
+.hero-card .badge.text-bg-primary-subtle { color: var(--bs-primary-text-emphasis) !important; background-color: var(--bs-primary-bg-subtle) !important; border-color: var(--bs-primary-border-subtle) !important; }
 
 /* Sidebar transitions */
 /* Sidebar + shell layout (flex) to avoid overlap/stacking issues */
@@ -220,10 +288,8 @@ body {
   padding-bottom: 6px;
 }
 
-/* Add subtle fade shadows at the scroll edges */
-.section-row {
-  mask-image: linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
-}
+/* Edge fade removed for readability */
+.section-row { mask-image: none; }
 
 .library-header input.form-control::placeholder { opacity: .7; }
 .library-header .form-select { min-width: 160px; }
@@ -313,6 +379,35 @@ body {
 .grid-books .book-poster { height: 280px; }
 .grid-books .book-card:hover .book-poster { transform: translateY(-4px) scale(1.01); }
 .grid-books .book-overlay { align-items: flex-end; }
+
+/* Small circular icon buttons for grid quick actions */
+.btn.btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+/* Skeleton loading tiles */
+.skeleton-tile {
+  background: linear-gradient(90deg, rgba(108,117,125,0.15) 25%, rgba(108,117,125,0.25) 37%, rgba(108,117,125,0.15) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+
+/* Filter chips */
+.filter-chip {
+  border: none;
+  cursor: pointer;
+}
 
 /* --- Sidebar tweaks (additional) --- */
 /* Hide the middle menu divider when collapsed */

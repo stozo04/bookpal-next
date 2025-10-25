@@ -38,12 +38,51 @@ export default function BookCard({ book, size = "medium", layout = "carousel" }:
 
       <div className="book-overlay d-flex flex-column justify-content-end align-items-center">
         <div className="d-flex gap-2 mb-2">
-          <Link href={`/reader/${book.id}`} className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1">
-            <Book size={14} /> Read
-          </Link>
-          <Link href={`/library/${book.id}`} className="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-1">
-            <InfoCircle size={14} /> Details
-          </Link>
+          {layout === "grid" ? (
+            <>
+              <Link
+                href={`/reader/${book.id}`}
+                className="btn btn-icon btn-primary"
+                aria-label="Read"
+                onClick={() => {
+                  try { if (typeof window !== 'undefined') localStorage.setItem('lastOpenedBookId', book.id); } catch {}
+                }}
+              >
+                <Book size={16} />
+              </Link>
+              <Link
+                href={`/library/${book.id}`}
+                className="btn btn-icon btn-outline-light"
+                aria-label="Details"
+                onClick={() => {
+                  try { if (typeof window !== 'undefined') localStorage.setItem('lastOpenedBookId', book.id); } catch {}
+                }}
+              >
+                <InfoCircle size={16} />
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href={`/reader/${book.id}`}
+                className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1"
+                onClick={() => {
+                  try { if (typeof window !== 'undefined') localStorage.setItem('lastOpenedBookId', book.id); } catch {}
+                }}
+              >
+                <Book size={14} /> Read
+              </Link>
+              <Link
+                href={`/library/${book.id}`}
+                className="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-1"
+                onClick={() => {
+                  try { if (typeof window !== 'undefined') localStorage.setItem('lastOpenedBookId', book.id); } catch {}
+                }}
+              >
+                <InfoCircle size={14} /> Details
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </div>

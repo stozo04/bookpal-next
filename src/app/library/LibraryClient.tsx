@@ -14,6 +14,9 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
   const { library, setLibrary } = useLibrary();
   const [query, setQuery] = useState("");
   const [view, setView] = useState<"rows" | "grid">("grid");
+  const [tags, setTags] = useState<string[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string>("");
+  const [lastOpenedId, setLastOpenedId] = useState<string | null>(null);
 
   // if the parent/server passed initialBooks, initialize context with them
   useEffect(() => {
@@ -21,14 +24,26 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
     // we only want to run this when initialBooks changes
   }, [initialBooks, setLibrary]);
 
+  // read last opened book id client-side
+  useEffect(() => {
+    try { if (typeof window !== 'undefined') setLastOpenedId(localStorage.getItem('lastOpenedBookId')); } catch {}
+  }, []);
+
+
   // filtering + sorting
+  // derive tags based on author initials as a stand-in for genres (demo)
+  useEffect(() => {
+    const unique = new Set<string>();
+    library.forEach((b) => unique.add(b.author.split(" ").slice(-1)[0]?.[0]?.toUpperCase() || "A"));
+    setTags(Array.from(unique).sort());
+  }, [library]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let items = !q
-      ? library
-      : library.filter((b) =>
-          [b.title, b.author].some((t) => t?.toLowerCase().includes(q))
-        );
+    let items = !q ? library : library.filter((b) => [b.title, b.author].some((t) => t?.toLowerCase().includes(q)));
+    if (selectedTag) {
+      items = items.filter((b) => (b.author.split(" ").slice(-1)[0]?.[0]?.toUpperCase() || "A") === selectedTag);
+    }
     items = [...items].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
     return items;
   }, [library, query]);
@@ -45,7 +60,7 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
               <h2 className="mb-0">Your Library</h2>
               <div className="text-secondary small">{filtered.length} book{filtered.length === 1 ? '' : 's'}</div>
             </div>
-            <div className="d-flex align-items-center gap-2">
+            <div className="d-flex align-items-center gap-2 flex-wrap">
               <div className="position-relative search-wrap">
                 <input
                   value={query}
@@ -56,6 +71,12 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
                   style={{ minWidth: 220 }}
                 />
                 <span className="search-icon" aria-hidden>🔍</span>
+              </div>
+              <div className="d-flex flex-wrap gap-2 align-items-center">
+                <button className={`badge filter-chip ${selectedTag === '' ? 'text-bg-primary' : 'text-bg-secondary'}`} onClick={() => setSelectedTag('')}>All</button>
+                {tags.map((t) => (
+                  <button key={t} className={`badge filter-chip ${selectedTag === t ? 'text-bg-primary' : 'text-bg-secondary'}`} onClick={() => setSelectedTag(t)} aria-pressed={selectedTag === t}>{t}</button>
+                ))}
               </div>
               <div className="btn-group btn-group-sm" role="group" aria-label="View switch">
                 <button
@@ -80,6 +101,13 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
           </div>
         </div>
 
+        {/* Continue reading shows when we have a last-opened book */}
+        {lastOpenedId && filtered.some((b) => b.id === lastOpenedId) && (
+          <div className="col-12">
+            <SectionRow title="Continue Reading" items={filtered.filter((b) => b.id === lastOpenedId)} />
+          </div>
+        )}
+
         {view === 'rows' ? (
           <>
             <div className="col-12">
@@ -96,6 +124,7 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
                 <h6 className="mb-0">All Books</h6>
                 <small className="text-secondary">Grid view</small>
               </div>
+              <GridSkeleton ready={filtered.length > 0} count={12} />
               <div className="row g-4 grid-books">
                 {filtered.map((b) => (
                   <div className="col-6 col-sm-4 col-md-3 col-lg-2" key={b.id}>
@@ -161,7 +190,7 @@ function SectionRow({ title, items }: { title: string; items: DBBook[] }) {
           </button>
         </div>
       </div>
-
+      <RowSkeleton ready={items.length > 0} />
       <div
         ref={carouselRef}
         className="d-flex gap-3 overflow-auto section-row"
@@ -173,6 +202,40 @@ function SectionRow({ title, items }: { title: string; items: DBBook[] }) {
           <BookCard key={b.id} book={b} />
         ))}
       </div>
+    </div>
+  );
+}
+
+function RowSkeleton({ ready }: { ready: boolean }) {
+  const [delayDone, setDelayDone] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setDelayDone(true), 350);
+    return () => clearTimeout(t);
+  }, []);
+  if (ready && delayDone) return null;
+  return (
+    <div className="d-flex gap-3 overflow-hidden mb-2">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="skeleton-tile rounded-4" style={{ width: 160, height: 240 }} />
+      ))}
+    </div>
+  );
+}
+
+function GridSkeleton({ ready, count = 12 }: { ready: boolean; count?: number }) {
+  const [delayDone, setDelayDone] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setDelayDone(true), 350);
+    return () => clearTimeout(t);
+  }, []);
+  if (ready && delayDone) return null;
+  return (
+    <div className="row g-4 mb-1">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="col-6 col-sm-4 col-md-3 col-lg-2">
+          <div className="skeleton-tile rounded-4" style={{ width: "100%", height: 280 }} />
+        </div>
+      ))}
     </div>
   );
 }
