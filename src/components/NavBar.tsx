@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { Book, GearFill, PersonCircle, ChevronLeft, ChevronRight, Eyeglasses } from 'react-bootstrap-icons';
+import { Book, GearFill, PersonCircle, ChevronLeft, ChevronRight, Eyeglasses, CloudUpload } from 'react-bootstrap-icons';
 import { useState, useEffect } from 'react';
 import { useRef } from 'react';
 
@@ -59,14 +59,7 @@ export default function NavBar() {
     <>
       <div
         className={`d-flex flex-column flex-shrink-0 p-3 bg-light sidebar ${isCollapsed ? 'collapsed' : ''}`}
-        style={{
-          width: isCollapsed ? '70px' : '280px',
-          position: isMobile ? 'fixed' : 'sticky',
-          top: isMobile ? undefined : 0,
-          zIndex: 1030,
-          height: isMobile ? '100vh' : '100%',
-          overflow: 'auto'
-        }}
+
       >
         <div className="d-flex align-items-center mb-3 mb-md-0 me-md-auto">
           <Link href="/" className="d-flex align-items-center link-dark text-decoration-none">
@@ -91,6 +84,16 @@ export default function NavBar() {
             >
               <Book className={isCollapsed ? 'mx-auto' : 'me-2'} />
               <span className={isCollapsed ? 'd-none' : ''}>Library</span>
+            </Link>
+          </li>
+          <li className="nav-item">
+            <Link
+              href="/uploads"
+              className={`nav-link ${isActive('/uploads') ? 'active' : 'link-dark'}`}
+              title="Uploads"
+            >
+              <CloudUpload className={isCollapsed ? 'mx-auto' : 'me-2'} />
+              <span className={isCollapsed ? 'd-none' : ''}>Uploads</span>
             </Link>
           </li>
         </ul>
@@ -146,13 +149,6 @@ export default function NavBar() {
         {session?.user && isCollapsed && userMenuOpen && (
           <div
             className="dropdown-menu show shadow"
-            style={{
-              position: 'fixed',
-              left: 78,
-              bottom: 20,
-              zIndex: 2000,
-              minWidth: 180,
-            }}
             role="menu"
             aria-label="User menu"
           >

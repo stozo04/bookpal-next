@@ -4,8 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import type { DefaultSession } from "next-auth";
-import Link from "next/link";
-import { LightningCharge, PersonCircle, MoonStars, BoxArrowLeft } from "react-bootstrap-icons";
+import { PersonCircle, MoonStars } from "react-bootstrap-icons";
 
 function getInitials(name?: string | null) {
   if (!name) return "U";
@@ -25,9 +24,7 @@ export default async function ProfilePage() {
   const initials = getInitials(session.user?.name);
 
   return (
-    <div className="container-fluid px-0" style={{ overflowY: 'hidden' }}>
-
-
+    <div className="container-fluid px-0">
       {/* CONTENT */}
       <section className="py-5 bg-body-tertiary">
         <div className="container">
@@ -40,7 +37,7 @@ export default async function ProfilePage() {
                   {/* Avatar */}
                   <div
                     className="rounded-circle border d-flex align-items-center justify-content-center"
-                    style={{ width: 72, height: 72, overflow: "hidden" }}
+                    style={{ width: 72, height: 72 }}
                     aria-label="Profile avatar"
                   >
                     {session.user?.image ? (
