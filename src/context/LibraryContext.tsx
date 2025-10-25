@@ -1,17 +1,17 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import type { DBBook } from "@/lib/types";
 
-// small fake data generator (kept lightweight)
-function makeId(seed = "") {
-  return `${Date.now().toString(36)}-${Math.abs(
-    seed.split("").reduce((s, c) => s + c.charCodeAt(0), 0)
-  ).toString(36)}`;
+// Demo data generator (runs client-side only via useEffect below)
+function stableHash(input: string): string {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) hash = (hash << 5) - hash + input.charCodeAt(i);
+  return Math.abs(hash).toString(36);
 }
 
-function generateFakeBooks(count = 10): DBBook[] {
+function generateFakeBooks(count = 12): DBBook[] {
   const titles = [
     "The Meridian Key",
     "Shadows of Arden",
@@ -23,6 +23,8 @@ function generateFakeBooks(count = 10): DBBook[] {
     "The Clockmaker's Daughter",
     "River & Ash",
     "The Quiet Cartographer",
+    "Signal and Stone",
+    "Silent Constellations",
   ];
   const authors = ["A. K. Reynolds", "M. L. Bennett", "S. Ortega", "Rivera Hale", "Jonah Price", "E. Thorne"];
 
@@ -34,18 +36,13 @@ function generateFakeBooks(count = 10): DBBook[] {
   return Array.from({ length: count }).map((_, i) => {
     const title = titles[i % titles.length] + (i >= titles.length ? ` (${i + 1})` : "");
     const author = authors[i % authors.length];
-    const id = makeId(title + author + i);
+    const id = `demo-${stableHash(title + author + String(i))}-${i.toString(36)}`;
     const characters = ["Protagonist", "Rival", "Mentor", "Companion"].slice(0, 2 + (i % 3));
     const chapters = Array.from({ length: 8 + (i % 5) }).map((_, idx) => sampleChapter(idx));
-    return {
-      id,
-      user_id: "fake",
-      title,
-      author,
-      characters,
-      chapters,
-      created_at: new Date(Date.now() - i * 1000 * 60 * 60 * 24).toISOString(),
-    } as DBBook;
+    // Spread created_at over past days for variety (client-side only; no SSR)
+    const dayMs = 24 * 60 * 60 * 1000;
+    const created_at = new Date(Date.now() - i * dayMs).toISOString();
+    return { id, user_id: "demo", title, author, characters, chapters, created_at } as DBBook;
   });
 }
 
@@ -58,7 +55,14 @@ type LibraryContextValue = {
 const LibraryContext = createContext<LibraryContextValue | undefined>(undefined);
 
 export function LibraryProvider({ children, initialBooks }: { children: ReactNode; initialBooks?: DBBook[] }) {
-  const [library, setLibrary] = useState<DBBook[]>(() => (initialBooks && initialBooks.length > 0 ? initialBooks : generateFakeBooks(12)));
+  const [library, setLibrary] = useState<DBBook[]>(() => (initialBooks && initialBooks.length > 0 ? initialBooks : []));
+
+  // Populate client-side demo books if none were provided by the server
+  useEffect(() => {
+    if (!initialBooks || initialBooks.length === 0) {
+      setLibrary((curr) => (curr.length === 0 ? generateFakeBooks(16) : curr));
+    }
+  }, [initialBooks]);
 
   const addBook = (b: DBBook) => {
     setLibrary((prev) => [b, ...prev]);

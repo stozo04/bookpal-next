@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import React from "react";
+import { Book, InfoCircle } from "react-bootstrap-icons";
 import type { DBBook } from "@/lib/types";
 
 function coverColorsFromSeed(seed: string) {
@@ -11,14 +12,18 @@ function coverColorsFromSeed(seed: string) {
   return `linear-gradient(180deg, hsl(${hue}deg 70% 60%), hsl(${(hue + 40) % 360}deg 60% 45%))`;
 }
 
-export default function BookCard({ book, size = "medium" }: { book: DBBook; size?: "small" | "medium" | "large" }) {
+type CardSize = "small" | "medium" | "large";
+type CardLayout = "carousel" | "grid";
+
+export default function BookCard({ book, size = "medium", layout = "carousel" }: { book: DBBook; size?: CardSize; layout?: CardLayout }) {
   const width = size === "small" ? 120 : size === "large" ? 220 : 160;
   const height = size === "large" ? 320 : 240;
+  const containerStyle = layout === "grid" ? undefined : { minWidth: width, width: width, flex: "0 0 auto" } as React.CSSProperties;
 
   return (
-    <div className="book-card" style={{ minWidth: width, width: width, flex: "0 0 auto" }}>
+    <div className="book-card" style={containerStyle}>
       <div
-        className="book-poster rounded-3"
+        className="book-poster rounded-4 border"
         style={{
           height,
           background: coverColorsFromSeed(book.title + book.author),
@@ -33,11 +38,11 @@ export default function BookCard({ book, size = "medium" }: { book: DBBook; size
 
       <div className="book-overlay d-flex flex-column justify-content-end align-items-center">
         <div className="d-flex gap-2 mb-2">
-          <Link href={`/reader/${book.id}`} className="btn btn-sm btn-primary">
-            Read
+          <Link href={`/reader/${book.id}`} className="btn btn-sm btn-primary d-inline-flex align-items-center gap-1">
+            <Book size={14} /> Read
           </Link>
-          <Link href={`/library/${book.id}`} className="btn btn-sm btn-outline-light">
-            Details
+          <Link href={`/library/${book.id}`} className="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-1">
+            <InfoCircle size={14} /> Details
           </Link>
         </div>
       </div>

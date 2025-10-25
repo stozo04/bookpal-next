@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { DBBook } from "@/lib/types";
 import { useLibrary } from "@/context/LibraryContext";
@@ -12,6 +12,8 @@ type Props = { initialBooks?: DBBook[] };
 
 export default function LibraryClient({ initialBooks = [] }: Props) {
   const { library, setLibrary } = useLibrary();
+  const [query, setQuery] = useState("");
+  const [view, setView] = useState<"rows" | "grid">("grid");
 
   // if the parent/server passed initialBooks, initialize context with them
   useEffect(() => {
@@ -19,32 +21,91 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
     // we only want to run this when initialBooks changes
   }, [initialBooks, setLibrary]);
 
-  // derived sections for Netflix-style rows
-  const popular = useMemo(() => library.slice(0, 10), [library]);
-  const recentlyAdded = useMemo(() => [...library].sort((a, b) => (a.created_at < b.created_at ? 1 : -1)).slice(0, 10), [library]);
+  // filtering + sorting
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let items = !q
+      ? library
+      : library.filter((b) =>
+          [b.title, b.author].some((t) => t?.toLowerCase().includes(q))
+        );
+    items = [...items].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+    return items;
+  }, [library, query]);
+
+  const recentlyAdded = useMemo(() => filtered.slice(0, 12), [filtered]);
+  const allAZ = useMemo(() => [...filtered].sort((a, b) => a.title.localeCompare(b.title)).slice(0, 18), [filtered]);
 
   return (
     <div className="container-fluid">
       <div className="row g-4">
         <div className="col-12">
-          <div className="d-flex align-items-center justify-content-between mb-3">
-            <div>
+          <div className="library-header d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
+            <div className="d-flex flex-column">
               <h2 className="mb-0">Your Library</h2>
-              <div className="text-secondary small">A tidy view of your books</div>
+              <div className="text-secondary small">{filtered.length} book{filtered.length === 1 ? '' : 's'}</div>
             </div>
-            <div>
-              <Link href="/uploads" className="btn btn-outline-secondary me-2">Add Book</Link>
+            <div className="d-flex align-items-center gap-2">
+              <div className="position-relative search-wrap">
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="form-control form-control-sm ps-5"
+                  placeholder="Search title or author"
+                  aria-label="Search books"
+                  style={{ minWidth: 220 }}
+                />
+                <span className="search-icon" aria-hidden>🔍</span>
+              </div>
+              <div className="btn-group btn-group-sm" role="group" aria-label="View switch">
+                <button
+                  type="button"
+                  className={`btn btn-outline-primary ${view === 'rows' ? 'active' : ''}`}
+                  aria-pressed={view === 'rows'}
+                  onClick={() => setView('rows')}
+                >
+                  Rows
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-outline-primary ${view === 'grid' ? 'active' : ''}`}
+                  aria-pressed={view === 'grid'}
+                  onClick={() => setView('grid')}
+                >
+                  Grid
+                </button>
+              </div>
+              <Link href="/uploads" className="btn btn-outline-primary btn-sm">Add Book</Link>
             </div>
           </div>
         </div>
 
-        <div className="col-12">
-          <SectionRow title="Popular on BookPal" items={popular} />
-        </div>
-
-        <div className="col-12 mt-3">
-          <SectionRow title="Recently Added" items={recentlyAdded} />
-        </div>
+        {view === 'rows' ? (
+          <>
+            <div className="col-12">
+              <SectionRow title="Recently Added" items={recentlyAdded} />
+            </div>
+            <div className="col-12 mt-3">
+              <SectionRow title="All Books (A–Z)" items={allAZ} />
+            </div>
+          </>
+        ) : (
+          <div className="col-12">
+            <div className="p-3 rounded-4 bg-transparent">
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <h6 className="mb-0">All Books</h6>
+                <small className="text-secondary">Grid view</small>
+              </div>
+              <div className="row g-4 grid-books">
+                {filtered.map((b) => (
+                  <div className="col-6 col-sm-4 col-md-3 col-lg-2" key={b.id}>
+                    <BookCard book={b} size="large" layout="grid" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Small library list fallback for accessibility */}
         <div className="col-12 d-lg-none">
@@ -61,9 +122,9 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
                         <div className="fw-semibold">{b.title}</div>
                         <div className="text-secondary small">by {b.author}</div>
                       </div>
-                      <a className="btn btn-outline-primary btn-sm" href={`/reader/${b.id}`}>
+                      <Link className="btn btn-outline-primary btn-sm" href={`/reader/${b.id}`}>
                         Open Reader
-                      </a>
+                      </Link>
                     </div>
                   </div>
                 ))}

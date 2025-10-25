@@ -220,6 +220,32 @@ body {
   padding-bottom: 6px;
 }
 
+/* Add subtle fade shadows at the scroll edges */
+.section-row {
+  mask-image: linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
+}
+
+.library-header input.form-control::placeholder { opacity: .7; }
+.library-header .form-select { min-width: 160px; }
+/* Outline-primary style parity for Library actions */
+.btn-outline-primary.active,
+.btn-outline-primary:active {
+  color: #fff !important;
+  background-color: var(--brand) !important;
+  border-color: var(--brand) !important;
+}
+
+/* Better aligned search icon */
+.library-header .search-wrap { position: relative; }
+.library-header .search-wrap .search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: .6;
+}
+
 .book-card {
   position: relative;
   display: inline-block;
@@ -233,11 +259,12 @@ body {
   padding: 10px;
   color: white;
   box-shadow: 0 6px 18px rgba(2,6,23,0.08);
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  transition: transform 200ms ease, box-shadow 200ms ease, filter 200ms ease;
 }
 .book-card:hover .book-poster {
   transform: translateY(-6px) scale(1.02);
-  box-shadow: 0 14px 40px rgba(2,6,23,0.12);
+  box-shadow: 0 14px 40px rgba(2,6,23,0.18);
+  filter: saturate(1.02);
 }
 
 .book-poster-meta {
@@ -280,6 +307,12 @@ body {
   .book-card { min-width: 120px !important; }
   .book-poster { height: 180px !important; }
 }
+
+/* Grid view refinements */
+.grid-books .book-card { display: block; width: 100%; }
+.grid-books .book-poster { height: 280px; }
+.grid-books .book-card:hover .book-poster { transform: translateY(-4px) scale(1.01); }
+.grid-books .book-overlay { align-items: flex-end; }
 
 /* --- Sidebar tweaks (additional) --- */
 /* Hide the middle menu divider when collapsed */
