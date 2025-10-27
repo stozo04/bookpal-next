@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     const userId = (session?.user as any)?.id;
     if (!userId) return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     const body = await req.json();
-    const { id, title, author } = body || {};
+    const { id, title, author, genre } = body || {};
     if (!id) return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });
     const { data: book, error: err } = await supabaseService.from('books').select('user_id').eq('id', id).single();
     if (err || !book || book.user_id !== userId) return NextResponse.json({ ok: false, error: 'Not found' }, { status: 404 });
@@ -19,6 +19,7 @@ export async function POST(req: Request) {
     const update: any = {};
     if (typeof title === 'string') update.title = title;
     if (typeof author === 'string') update.author = author;
+    if (typeof genre === 'string') update.genre = genre;
 
     if (Object.keys(update).length === 0) return NextResponse.json({ ok: false, error: 'No changes' }, { status: 400 });
 

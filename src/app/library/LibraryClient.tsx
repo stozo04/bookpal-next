@@ -17,6 +17,7 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
   const [tags, setTags] = useState<string[]>([]);
   const [selectedTag, setSelectedTag] = useState<string>("");
   const [lastOpenedId, setLastOpenedId] = useState<string | null>(null);
+  const [continueBooks, setContinueBooks] = useState<DBBook[]>([]);
 
   // if the parent/server passed initialBooks, initialize context with them
   useEffect(() => {
@@ -66,6 +67,20 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
   // read last opened book id client-side
   useEffect(() => {
     try { if (typeof window !== 'undefined') setLastOpenedId(localStorage.getItem('lastOpenedBookId')); } catch {}
+  }, []);
+
+  // fetch continue reading (multi)
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/books/continue?limit=5');
+        const j = await res.json();
+        if (j?.ok && Array.isArray(j.items)) {
+          const bs = j.items.map((x: any) => x.book).filter(Boolean);
+          setContinueBooks(bs);
+        }
+      } catch {}
+    })();
   }, []);
 
 
@@ -140,10 +155,10 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
           </div>
         </div>
 
-        {/* Continue reading shows when we have a last-opened book */}
-        {lastOpenedId && filtered.some((b) => b.id === lastOpenedId) && (
+        {/* Continue reading: use server-side recent progress; fallback to last-opened */}
+        {(continueBooks.length > 0 ? continueBooks : (lastOpenedId ? filtered.filter((b) => b.id === lastOpenedId) : [])).length > 0 && (
           <div className="col-12">
-            <SectionRow title="Continue Reading" items={filtered.filter((b) => b.id === lastOpenedId)} />
+            <SectionRow title="Continue Reading" items={(continueBooks.length > 0 ? continueBooks : filtered.filter((b) => b.id === lastOpenedId))} />
           </div>
         )}
 

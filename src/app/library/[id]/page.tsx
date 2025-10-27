@@ -11,7 +11,7 @@ export default async function EditBookPage({ params }: { params: Promise<{ id: s
   if (!session) return null;
   const { data: book } = await supabaseService
     .from('books')
-    .select('id, title, author, cover_storage_path, cover_url, cover_source')
+    .select('id, title, author, cover_storage_path, cover_url, cover_source, genre')
     .eq('id', id)
     .single();
   if (!book) return <div className="container py-4"><div className="alert alert-warning">Book not found.</div></div>;

@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
     const { data, error } = await supabaseService
       .from("books")
-      .select("id, title, author, chapters, characters, user_id, mime_type, cover_storage_path, cover_url, cover_source, cover_attribution")
+      .select("id, title, author, chapters, characters, user_id, mime_type, cover_storage_path, cover_url, cover_source, cover_attribution, genre")
       .eq("id", bookId)
       .single();
     if (error) throw error;

@@ -294,32 +294,6 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                       >
                         {aiLoading ? 'Summarizing…' : 'Summarize Chapter'}
                       </button>
-                      <button className="btn btn-outline-primary w-100" disabled={aiLoading} onClick={async () => {
-                        try {
-                          setAiLoading(true);
-                          setAiOutput("");
-                          // Prefer stored characters if present
-                          const stored = (dbBook as any)?.characters as any[] | undefined;
-                          if (Array.isArray(stored) && stored.length) {
-                            const out = stored.map((c) => `• ${c.name}${c.role ? ' — ' + c.role : ''}`).join('\n');
-                            setAiOutput(out);
-                            return;
-                          }
-                          // Fallback: extract from book text (aggregate a larger sample than one chapter)
-                          const sample = (book?.chapters || []).slice(0, 5).map((c) => (c.content || '')).join('\n\n').replace(/\t+/g, ' ').slice(0, 20000);
-                          const res = await fetch('/api/ai/characters', {
-                            method: 'POST', headers: { 'content-type': 'application/json' },
-                            body: JSON.stringify({ text: sample })
-                          });
-                          const data = await res.json();
-                          const list: string[] = data.characters || [];
-                          setAiOutput(list.length ? list.map((n: string) => `• ${n}`).join('\n') : 'No characters found.');
-                        } catch (e) {
-                          setAiOutput('Failed to extract characters.');
-                        } finally {
-                          setAiLoading(false);
-                        }
-                      }}>Character List</button>
                       <button className="btn btn-outline-primary w-100" onClick={() => alert('Visualize')}>Visualize</button>
                     </div>
                   {aiOutput && (
