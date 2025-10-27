@@ -55,39 +55,78 @@ export async function POST(req: Request) {
     if (!text) return NextResponse.json({ ok: false, error: "Empty PDF text" }, { status: 400 });
     await logStep(bookId, `Parsed text (${text.length} chars)`);
 
-    // Naive chunking: split by double newlines, group into ~1500 word chunks
-    const paras: string[] = text.split(/\n\s*\n/).map((p: string) => p.trim()).filter(Boolean);
-    const chunks: string[] = [];
-    let buf: string[] = [];
-    let wc = 0;
-    for (const p of paras) {
-      const w = p.split(/\s+/).length;
-      if (wc + w > 1500 && buf.length) {
-        chunks.push(buf.join("\n\n"));
-        buf = [];
-        wc = 0;
+    // Try to split by real chapter headings first
+    // Normalize and drop standalone page numbers
+    const normalized = text
+      .replace(/\r\n/g, '\n')
+      .split('\n')
+      .filter((ln: string) => !/^\s*\d{1,4}\s*$/.test(ln))
+      .join('\n');
+    const headingPattern = new RegExp(
+      // Matches "CHAPTER I", "Chapter 1", or spaced "C H A P T E R II"
+      String.raw`^(?:\s*(?:C\s*H\s*A\s*P\s*T\s*E\s*R|CHAPTER|Chapter)\s+(?:[IVXLC]+|\d+)[^\n]*?)$`,
+      'm'
+    );
+
+    // Find all heading indices
+    const headingRegex = new RegExp(
+      String.raw`^\s*(?:C\s*H\s*A\s*P\s*T\s*E\s*R|CHAPTER|Chapter)\s+(?<num>[IVXLC]+|\d+)[^\n]*?$`,
+      'mg'
+    );
+    const indices: { index: number; title: string }[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = headingRegex.exec(normalized))) {
+      indices.push({ index: m.index, title: m[0].replace(/\s+/g, ' ').trim() });
+    }
+
+    let sections: { title: string; content: string }[] = [];
+    if (indices.length >= 2) {
+      for (let i = 0; i < indices.length; i++) {
+        const start = indices[i].index;
+        const end = i + 1 < indices.length ? indices[i + 1].index : normalized.length;
+        const raw = normalized.slice(start, end).trim();
+        const lines = raw.split(/\n+/);
+        const title = lines[0].replace(/\s+/g, ' ').trim();
+        const content = lines.slice(1).join('\n').trim();
+        if (content) sections.push({ title, content });
       }
-      buf.push(p); wc += w;
+      await logStep(bookId, `Detected ${sections.length} chapters by headings`);
+    } else {
+      // Fallback: chunk by paragraphs (~1500 words)
+      const paras: string[] = normalized.split(/\n\s*\n/).map((p: string) => p.trim()).filter(Boolean);
+      const chunks: string[] = [];
+      let buf: string[] = [];
+      let wc = 0;
+      for (const p of paras) {
+        const w = p.split(/\s+/).length;
+        if (wc + w > 1500 && buf.length) {
+          chunks.push(buf.join("\n\n"));
+          buf = [];
+          wc = 0;
+        }
+        buf.push(p); wc += w;
+      }
+      if (buf.length) chunks.push(buf.join("\n\n"));
+      await logStep(bookId, `Chunked into ${chunks.length} sections`);
+      sections = chunks.map((c, i) => ({ title: `Section ${i + 1}`, content: c }));
     }
-    if (buf.length) chunks.push(buf.join("\n\n"));
-    await logStep(bookId, `Chunked into ${chunks.length} sections`);
 
-    // Summarize each chunk into a chapter (OpenAI-backed with fallback)
+    // Summarize each section into a chapter
     const batchSize = 3; const chapters: { title: string; content: string; summary?: string }[] = [];
-    for (let i = 0; i < chunks.length; i += batchSize) {
-      const batch = chunks.slice(i, i + batchSize);
+    for (let i = 0; i < sections.length; i += batchSize) {
+      const batch = sections.slice(i, i + batchSize);
       const t0 = Date.now();
-      const summarized = await Promise.all(batch.map((ch) => summarizeWithRetry(ch)));
+      const summarized = await Promise.all(batch.map((sec) => summarizeWithRetry(sec.content.slice(0, 8000))));
       const dt = Date.now() - t0;
-      summarized.forEach((summary, j) => chapters.push({ title: `Chapter ${i + j + 1}`, content: batch[j], summary }));
-      await logStep(bookId, `Summarized ${Math.min(i + batchSize, chunks.length)}/${chunks.length} (batch ${i/batchSize + 1} in ${dt}ms)`);
+      summarized.forEach((summary, j) => chapters.push({ title: batch[j].title || `Chapter ${i + j + 1}`, content: batch[j].content, summary }));
+      await logStep(bookId, `Summarized ${Math.min(i + batchSize, sections.length)}/${sections.length} (batch ${i/batchSize + 1} in ${dt}ms)`);
     }
 
-    // Try to extract author/title from the first ~2 chunks
+    // Try to extract author/title from the first ~2 sections
     let author = book.author || undefined;
     let titleGuess = book.title || undefined;
     try {
-      const headSample = chunks.slice(0, 2).join("\n\n");
+      const headSample = sections.slice(0, 2).map((s) => s.content).join("\n\n");
       const meta = await extractAuthorAndTitle(headSample);
       if (meta.author) author = meta.author;
       if (meta.title) titleGuess = meta.title;

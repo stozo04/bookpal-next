@@ -39,6 +39,8 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
   const chapter = book.chapters[chapterIdx];
   const [pageIdx, setPageIdx] = useState(0);
   const [pageCount, setPageCount] = useState(1);
+  const [chapterPageCounts, setChapterPageCounts] = useState<number[]>([]);
+  const [containerWidth, setContainerWidth] = useState(0);
   const canPrev = chapterIdx > 0 || pageIdx > 0;
   const canNext = chapterIdx < book.chapters.length - 1 || pageIdx < pageCount - 1;
   useEffect(() => {
@@ -58,6 +60,29 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
 
   // Reset pagination when chapter changes
   useEffect(() => { setPageIdx(0); }, [chapterIdx]);
+
+  // Track page count per chapter so TOC can show page numbers for current chapter
+  useEffect(() => {
+    setChapterPageCounts((prev) => {
+      const next = prev.slice();
+      next[chapterIdx] = pageCount;
+      return next;
+    });
+  }, [pageCount, chapterIdx]);
+
+  // Lazy pre-compute page counts for all chapters when we know container width / font / width
+  useEffect(() => {
+    if (!containerWidth) return;
+    const charsPerLine = Math.max(30, Math.floor(containerWidth / (fontSize * 0.6)));
+    const linesPerPage = width === 'narrow' ? 24 : width === 'comfort' ? 28 : 32;
+    const charsPerPage = Math.max(500, Math.floor(charsPerLine * linesPerPage));
+    const counts = book.chapters.map((ch) => {
+      const clean = (ch as any).content?.toString?.() || '';
+      const normalized = clean.replace(/\n{3,}/g, '\n\n');
+      return Math.max(1, Math.ceil(normalized.length / charsPerPage));
+    });
+    setChapterPageCounts(counts);
+  }, [containerWidth, fontSize, width, book.chapters]);
 
   function handleNext() {
     if (pageIdx < pageCount - 1) {
@@ -129,7 +154,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
               </div>
             </div>
             <h3 className="h6 mb-3">{chapter.title}</h3>
-            <ReaderContent text={chapter.content} font={fontSize} width={width} sideKey={`${sideMode}-${showSide}`} pageIdx={pageIdx} onPageCount={setPageCount} />
+            <ReaderContent text={chapter.content} font={fontSize} width={width} sideKey={`${sideMode}-${showSide}`} pageIdx={pageIdx} onPageCount={setPageCount} onMeasureWidth={setContainerWidth} />
             {('summary' in chapter) && (chapter as any).summary && (
               <div className="mt-4 p-3 rounded-3 bg-body-tertiary border">
                 <div className="small text-secondary mb-1">AI Summary</div>
@@ -150,13 +175,27 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
               {sideMode === 'toc' ? (
                 <div className="list-group small">
                   {book.chapters.map((c, i) => (
-                    <button
-                      key={i}
-                      className={`list-group-item list-group-item-action ${i === chapterIdx ? 'active' : ''}`}
-                      onClick={() => setChapterIdx(i)}
-                    >
-                      {c.title}
-                    </button>
+                    <div key={i} className="mb-1">
+                      <button
+                        className={`list-group-item list-group-item-action ${i === chapterIdx ? 'active' : ''}`}
+                        onClick={() => { setChapterIdx(i); setPageIdx(0); }}
+                      >
+                        {c.title}
+                      </button>
+                      {i === chapterIdx && (
+                        <div className="list-group small mt-2">
+                          {Array.from({ length: chapterPageCounts[i] || pageCount }).map((_, j) => (
+                            <button
+                              key={j}
+                              className={`list-group-item list-group-item-action ${j === pageIdx ? 'active' : ''}`}
+                              onClick={() => setPageIdx(j)}
+                            >
+                              Page {j + 1}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               ) : sideMode === 'ai' ? (
@@ -204,7 +243,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
   );
 }
 
-function ReaderContent({ text, font, width, sideKey, pageIdx, onPageCount }: { text: string; font: number; width: 'narrow' | 'comfort' | 'wide'; sideKey: string; pageIdx: number; onPageCount: (n: number) => void }) {
+function ReaderContent({ text, font, width, sideKey, pageIdx, onPageCount, onMeasureWidth }: { text: string; font: number; width: 'narrow' | 'comfort' | 'wide'; sideKey: string; pageIdx: number; onPageCount: (n: number) => void; onMeasureWidth: (w: number) => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [menuKind, setMenuKind] = useState<'word' | 'text'>('text');
@@ -280,22 +319,135 @@ function ReaderContent({ text, font, width, sideKey, pageIdx, onPageCount }: { t
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    // Measure approx chars per page based on container width and font size
-    // Very rough heuristic: characters per line ~= containerWidth / (fontSize * 0.6)
     const containerWidth = el.clientWidth || 600;
-    const charsPerLine = Math.max(30, Math.floor(containerWidth / (font * 0.6)));
-    const linesPerPage = width === 'narrow' ? 24 : width === 'comfort' ? 28 : 32;
-    const charsPerPage = Math.max(500, Math.floor(charsPerLine * linesPerPage));
-    const arr: string[] = [];
-    let i = 0;
-    const clean = text.replace(/\n{3,}/g, "\n\n");
-    while (i < clean.length) {
-      arr.push(clean.slice(i, i + charsPerPage));
-      i += charsPerPage;
+    onMeasureWidth(containerWidth);
+    // We'll compute line height from the measuring container to avoid unitless values
+    const maxLines = width === 'narrow' ? 24 : width === 'comfort' ? 28 : 32;
+
+    // Build an offscreen measuring container
+    const meas = document.createElement('div');
+    meas.style.position = 'fixed';
+    meas.style.left = '-99999px';
+    meas.style.top = '-99999px';
+    meas.style.visibility = 'hidden';
+    meas.style.pointerEvents = 'none';
+    meas.className = `reader-content ${width}`;
+    meas.style.width = `${containerWidth}px`;
+    meas.style.fontSize = `${font}px`;
+    document.body.appendChild(meas);
+
+    // Split into paragraphs but preserve content by keeping final newline-joins identical on output
+    const normalized = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n');
+    const paragraphs = normalized.split(/\n\n/);
+    const builtPages: string[] = [];
+    let pageParas: string[] = [];
+    meas.innerHTML = '';
+
+    // Compute line height in pixels from meas (handles unitless values)
+    const lhStr = window.getComputedStyle(meas).lineHeight;
+    let lineHeightPx = parseFloat(lhStr);
+    if (lhStr.endsWith('px') && !Number.isNaN(lineHeightPx) && lineHeightPx > 0) {
+      // ok
+    } else if (!Number.isNaN(lineHeightPx) && lineHeightPx > 0 && lineHeightPx < 10) {
+      lineHeightPx = lineHeightPx * font; // unitless multiplier
+    } else {
+      lineHeightPx = Math.max(1, font * 1.5);
     }
-    setPages(arr.length ? arr : [clean]);
-    onPageCount(arr.length || 1);
-  }, [text, font, width, sideKey, onPageCount]);
+
+    const flushPage = () => {
+      if (pageParas.length) builtPages.push(pageParas.join('\n\n'));
+      pageParas = [];
+      meas.innerHTML = '';
+    };
+
+    const measureLines = (paras: string[]) => {
+      meas.innerHTML = paras.map((t) => `<p>${t.replace(/</g, '&lt;')}</p>`).join('');
+      return Math.ceil(meas.scrollHeight / lineHeightPx);
+    };
+
+    const splitParagraphToPages = (paraText: string) => {
+      const words = paraText.split(/\s+/);
+      let start = 0;
+      while (start < words.length) {
+        // If nothing fits on current page, flush to start a fresh page
+        if (measureLines(pageParas.concat([''])) > maxLines) {
+          flushPage();
+        }
+        let lo = 1, hi = words.length - start, best = 0;
+        while (lo <= hi) {
+          const mid = Math.floor((lo + hi) / 2);
+          const candidate = words.slice(start, start + mid).join(' ');
+          const lines = measureLines(pageParas.concat([candidate]));
+          if (lines <= maxLines) { best = mid; lo = mid + 1; } else { hi = mid - 1; }
+        }
+        if (best === 0) {
+          // Not even one word fits → new page
+          flushPage();
+          continue;
+        }
+        const segment = words.slice(start, start + best).join(' ');
+        pageParas.push(segment);
+        start += best;
+        if (start < words.length) {
+          // More words remain → finalize this page and continue
+          flushPage();
+        }
+      }
+    };
+
+    for (const p of paragraphs) {
+      // If paragraph fits fully, append; otherwise split by words using binary search
+      const fits = measureLines(pageParas.concat([p])) <= maxLines;
+      if (fits) {
+        pageParas.push(p);
+      } else {
+        splitParagraphToPages(p);
+      }
+    }
+    flushPage();
+
+    document.body.removeChild(meas);
+
+    // Guard: if reconstruction appears to drop content, fall back to a simple character-based paging
+    const joined = builtPages.join('\n\n');
+    if (joined.length < text.length * 0.9) {
+      const charsPerLine = Math.max(30, Math.floor(containerWidth / (font * 0.6)));
+      const linesPerPage = width === 'narrow' ? 24 : width === 'comfort' ? 28 : 32;
+      const charsPerPage = Math.max(500, Math.floor(charsPerLine * linesPerPage));
+      const arr: string[] = [];
+      let i = 0;
+      const clean = text.replace(/\n{3,}/g, "\n\n");
+      while (i < clean.length) {
+        arr.push(clean.slice(i, i + charsPerPage));
+        i += charsPerPage;
+      }
+      setPages(arr.length ? arr : [clean]);
+      onPageCount(arr.length || 1);
+      return;
+    }
+
+    // If everything fits into one page but is clearly long, split by characters as a last resort
+    if (builtPages.length <= 1) {
+      const charsPerLine = Math.max(30, Math.floor(containerWidth / (font * 0.6)));
+      const linesPerPage = width === 'narrow' ? 24 : width === 'comfort' ? 28 : 32;
+      const charsPerPage = Math.max(500, Math.floor(charsPerLine * linesPerPage));
+      if (normalized.length > Math.floor(charsPerPage * 1.1)) {
+        const arr: string[] = [];
+        let i = 0;
+        while (i < normalized.length) {
+          arr.push(normalized.slice(i, i + charsPerPage));
+          i += charsPerPage;
+        }
+        setPages(arr.length ? arr : [normalized]);
+        onPageCount(arr.length || 1);
+        return;
+      }
+    }
+
+    setPages(builtPages.length ? builtPages : [normalized]);
+    onPageCount(builtPages.length || 1);
+  // Only re-run when these scalar inputs change. Avoid passing functions/objects that change identity
+  }, [text, font, width, sideKey]);
 
   const pageText = pages[Math.min(pageIdx, Math.max(0, pages.length - 1))] || '';
 
