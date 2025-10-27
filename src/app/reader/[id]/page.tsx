@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState, useEffect, use as useUnwrap } from "react";
+import { useMemo, useState, useEffect, use as useUnwrap, useRef } from "react";
+import { defineWord } from "@/lib/openai";
 import Link from "next/link";
+import { GearFill, Stars } from "react-bootstrap-icons";
 
 type Chapter = { title: string; content: string };
 type DemoBook = { id: string; title: string; author: string; chapters: Chapter[] };
@@ -30,7 +32,9 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
   const book = useMemo(() => makeDemoBook(id), [id]);
   const [chapterIdx, setChapterIdx] = useState(0);
   const [showSide, setShowSide] = useState(true);
-  const [sideMode, setSideMode] = useState<"toc" | "ai">("toc");
+  const [sideMode, setSideMode] = useState<"toc" | "ai" | "settings">("toc");
+  const [fontSize, setFontSize] = useState(18);
+  const [width, setWidth] = useState<'narrow' | 'comfort' | 'wide'>("comfort");
   const chapter = book.chapters[chapterIdx];
   const canPrev = chapterIdx > 0;
   const canNext = chapterIdx < book.chapters.length - 1;
@@ -42,6 +46,20 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
     document.body.classList.add('reader-fullscreen');
     return () => { document.body.classList.remove('reader-fullscreen'); };
   }, []);
+  // Load/save reader prefs (placeholder for Profile integration)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('reader_prefs');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.fontSize === 'number') setFontSize(parsed.fontSize);
+        if (parsed.width === 'narrow' || parsed.width === 'comfort' || parsed.width === 'wide') setWidth(parsed.width);
+      }
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem('reader_prefs', JSON.stringify({ fontSize, width })); } catch {}
+  }, [fontSize, width]);
 
   const paneColClass = showSide ? "col-12 col-lg-9 order-1" : "col-12 order-1";
 
@@ -55,22 +73,34 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                 <h2 className="h5 mb-1">{book.title}</h2>
                 <div className="text-secondary small">by {book.author}</div>
               </div>
-              <div className="d-flex align-items-center gap-2">
-                <button className="btn btn-outline-secondary btn-sm" onClick={() => { setSideMode('toc'); setShowSide((s) => !s); }}>{showSide && sideMode==='toc' ? 'Hide' : 'Chapters'}</button>
-                <button className="btn btn-outline-secondary btn-sm" disabled={!canPrev} onClick={() => setChapterIdx((i) => Math.max(0, i - 1))}>Prev</button>
-                <button className="btn btn-outline-secondary btn-sm" disabled={!canNext} onClick={() => setChapterIdx((i) => Math.min(book.chapters.length - 1, i + 1))}>Next</button>
-                <Link href="/library" className="btn btn-primary btn-sm">Back to Library</Link>
+              <div className="button-container">
+                <div className="button-row">
+                  <button className="btn btn-outline-secondary btn-sm" onClick={() => { setSideMode('toc'); setShowSide((s) => !s); }}>{showSide && sideMode==='toc' ? 'Hide' : 'Chapters'}</button>
+                  <button className="btn btn-outline-secondary btn-sm" disabled={!canPrev} onClick={() => setChapterIdx((i) => Math.max(0, i - 1))}>Prev</button>
+                  <button className="btn btn-outline-secondary btn-sm" disabled={!canNext} onClick={() => setChapterIdx((i) => Math.min(book.chapters.length - 1, i + 1))}>Next</button>
+                  <Link href="/library" className="btn btn-primary btn-sm">Back to Library</Link>
+                </div>
+                <div className="button-row">
+                  <button className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1" onClick={() => { setSideMode('settings'); setShowSide(true); }} title="Reading settings">
+                    <GearFill size={14} />
+                  </button>
+                </div>
+                <div className="button-row">
+                  <button className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1" onClick={() => { setSideMode('ai'); setShowSide(true); }} title="AI Assistant" aria-label="AI Assistant">
+                    <Stars size={14} />
+                  </button>
+                </div>
               </div>
             </div>
             <h3 className="h6 mb-3">{chapter.title}</h3>
-            <ReaderContent text={chapter.content} />
+            <ReaderContent text={chapter.content} font={fontSize} width={width} sideKey={`${sideMode}-${showSide}`} />
           </div>
         </div>
         {showSide && (
           <div className="col-12 col-lg-3 order-2">
             <aside className="p-3 rounded-4 border bg-white shadow-sm reader-toc">
               <div className="d-flex align-items-center justify-content-between mb-2">
-                <strong className="small text-uppercase text-secondary">{sideMode === 'toc' ? 'Chapters' : 'AI Assistant'}</strong>
+                <strong className="small text-uppercase text-secondary">{sideMode === 'toc' ? 'Chapters' : sideMode === 'ai' ? 'AI Assistant' : 'Reading Settings'}</strong>
                 <div className="d-flex align-items-center gap-2">
                   <button className="btn btn-outline-secondary btn-sm" onClick={() => setShowSide(false)}>Hide</button>
                 </div>
@@ -87,11 +117,39 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                     </button>
                   ))}
                 </div>
+              ) : sideMode === 'ai' ? (
+                <div className="d-flex flex-column gap-3">
+                  <div>
+                    <div className="small text-secondary mb-2">Quick actions</div>
+                    <div className="d-flex flex-column gap-2">
+                      <button className="btn btn-primary w-100" onClick={() => alert('Summarize Chapter')}>Summarize Chapter</button>
+                      <button className="btn btn-outline-primary w-100" onClick={() => alert('Character List')}>Character List</button>
+                      <button className="btn btn-outline-primary w-100" onClick={() => alert('Visualize')}>Visualize</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="small text-secondary d-block mb-1">Ask a question</label>
+                    <textarea className="form-control" rows={3} placeholder="Ask about this chapter…" />
+                    <div className="d-flex justify-content-end mt-2">
+                      <button className="btn btn-primary btn-sm" onClick={() => alert('Ask AI')}>Ask</button>
+                    </div>
+                  </div>
+                </div>
               ) : (
-                <div className="d-flex flex-column gap-2">
-                  <button className="btn btn-primary">Summarize Chapter</button>
-                  <button className="btn btn-outline-primary">Character List</button>
-                  <button className="btn btn-outline-primary">Visualize</button>
+                <div className="d-flex flex-column gap-3">
+                  <div>
+                    <label className="small text-secondary d-block mb-1">Font size</label>
+                    <input type="range" min={16} max={22} value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} className="w-100" />
+                  </div>
+                  <div>
+                    <label className="small text-secondary d-block mb-1">Width</label>
+                    <div className="btn-group btn-group-sm w-100" role="group" aria-label="Width">
+                      <button className={`btn btn-outline-primary ${width === 'narrow' ? 'active' : ''}`} onClick={() => setWidth('narrow')}>Narrow</button>
+                      <button className={`btn btn-outline-primary ${width === 'comfort' ? 'active' : ''}`} onClick={() => setWidth('comfort')}>Comfort</button>
+                      <button className={`btn btn-outline-primary ${width === 'wide' ? 'active' : ''}`} onClick={() => setWidth('wide')}>Wide</button>
+                    </div>
+                  </div>
+                  <small className="text-secondary">These preferences will sync to your profile soon.</small>
                 </div>
               )}
             </aside>
@@ -99,26 +157,21 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
         )}
       </div>
 
-      {/* Floating AI orb */}
-      <button
-        type="button"
-        className="reader-ai-orb"
-        aria-label="Open AI assistant"
-        onClick={() => { setSideMode('ai'); setShowSide(true); }}
-      >
-        ✨
-      </button>
+      {/* AI Assistant now opens in side panel via sideMode === 'ai' */}
     </div>
   );
 }
 
-function ReaderContent({ text }: { text: string }) {
-  const [font, setFont] = useState(18);
-  const [width, setWidth] = useState<'narrow' | 'comfort' | 'wide'>("comfort");
+function ReaderContent({ text, font, width, sideKey }: { text: string; font: number; width: 'narrow' | 'comfort' | 'wide'; sideKey: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [menuKind, setMenuKind] = useState<'word' | 'text'>('text');
   const [selectedText, setSelectedText] = useState('');
+  const anchorRef = useRef<HTMLButtonElement | null>(null);
+  const [popContent, setPopContent] = useState<string>("");
+  const [popPos, setPopPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [popOpen, setPopOpen] = useState(false);
+  const [showFallback, setShowFallback] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
@@ -146,17 +199,41 @@ function ReaderContent({ text }: { text: string }) {
     setMenuOpen(true);
   };
 
+  // Manage bootstrap popover lifecycle
+  useEffect(() => {
+    if (!popOpen || !anchorRef.current) return;
+    const Popover = (window as any).bootstrap?.Popover;
+    if (!Popover) { setShowFallback(true); return; }
+    const el = anchorRef.current;
+    const instance = new Popover(el, {
+      container: 'body',
+      html: true,
+      placement: 'top',
+      title: `Definition: ${selectedText}`,
+      content: `<div class="small">${popContent.replace(/</g, '&lt;')}</div>`,
+      trigger: 'manual',
+    });
+    instance.show();
+    const close = () => { try { instance.hide(); } catch {} setPopOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    const onClick = () => close();
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('click', onClick, { once: true });
+    window.addEventListener('scroll', onClick, { once: true, capture: true });
+    return () => {
+      try { instance.dispose(); } catch {}
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [popOpen, popContent, selectedText]);
+
+  // Auto-dismiss when the side panel toggles or mode changes
+  useEffect(() => {
+    if (popOpen) setPopOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sideKey]);
+
   return (
     <div>
-      <div className="d-flex align-items-center gap-2 mb-3">
-        <label className="small text-secondary">Font</label>
-        <input type="range" min={16} max={22} value={font} onChange={(e) => setFont(parseInt(e.target.value))} />
-        <div className="ms-auto btn-group btn-group-sm" role="group" aria-label="Width">
-          <button className={`btn btn-outline-primary ${width === 'narrow' ? 'active' : ''}`} onClick={() => setWidth('narrow')}>Narrow</button>
-          <button className={`btn btn-outline-primary ${width === 'comfort' ? 'active' : ''}`} onClick={() => setWidth('comfort')}>Comfort</button>
-          <button className={`btn btn-outline-primary ${width === 'wide' ? 'active' : ''}`} onClick={() => setWidth('wide')}>Wide</button>
-        </div>
-      </div>
       <div className={`reader-content ${width}`} style={{ fontSize: font }} onContextMenu={handleContextMenu}>
         <p>{text}</p>
         <p>{text}</p>
@@ -166,13 +243,48 @@ function ReaderContent({ text }: { text: string }) {
       {menuOpen && (
         <div className="reader-menu shadow" style={{ left: menuPos.x, top: menuPos.y }} role="menu">
           {menuKind === 'word' ? (
-            <button className="dropdown-item" role="menuitem" onClick={() => { setMenuOpen(false); alert(`Define: ${selectedText}`); }}>Definition</button>
+            <button className="dropdown-item" role="menuitem" onClick={async () => {
+              setMenuOpen(false);
+              // call through API route to ensure server-side key usage and visible network entry
+              const res = await fetch(`/api/ai/define?word=${encodeURIComponent(selectedText)}`);
+              const data = await res.json();
+              const def = data.definition || data.error || 'No definition available.';
+              const sel = window.getSelection?.();
+              let x = menuPos.x, y = menuPos.y;
+              try {
+                if (sel && sel.rangeCount > 0) {
+                  const rect = sel.getRangeAt(0).getBoundingClientRect();
+                  x = rect.left + rect.width / 2;
+                  // default above; clamp inside viewport and flip if needed
+                  const vh = window.innerHeight || document.documentElement.clientHeight || 800;
+                  const vw = window.innerWidth || document.documentElement.clientWidth || 1200;
+                  const maxWidth = 320; const half = maxWidth / 2; const margin = 12;
+                  x = Math.max(half + margin, Math.min(vw - half - margin, x));
+                  const preferTop = rect.top > 90;
+                  y = preferTop ? rect.top - 8 : rect.bottom + 8;
+                  if (!preferTop && y + 140 > vh) { y = rect.top - 8; }
+                }
+              } catch {}
+              setPopContent(def);
+              setPopPos({ x, y });
+              setShowFallback(true);
+              setPopOpen(true);
+            }}>Definition</button>
           ) : (
             <>
               <button className="dropdown-item" role="menuitem" onClick={() => { setMenuOpen(false); alert('Summarize selection'); }}>Summarize</button>
               <button className="dropdown-item" role="menuitem" onClick={() => { setMenuOpen(false); alert('Visualize selection'); }}>Visualize</button>
             </>
           )}
+        </div>
+      )}
+
+      {/* Popover anchor */}
+      <button ref={anchorRef} className="reader-popover-anchor" style={{ left: popPos.x, top: popPos.y }} aria-hidden="true" />
+      {popOpen && showFallback && (
+        <div className="reader-def-popover" style={{ left: popPos.x, top: popPos.y }}>
+          <div className="reader-def-popover-title">Definition: {selectedText}</div>
+          <div className="reader-def-popover-body">{popContent}</div>
         </div>
       )}
     </div>

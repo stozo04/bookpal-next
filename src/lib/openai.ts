@@ -1,8 +1,23 @@
+import OpenAI from "openai";
+
+const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+const HAS_KEY = !!process.env.OPENAI_API_KEY;
+
+export async function defineWord(word: string): Promise<string> {
+  if (!HAS_KEY) {
+    return `Definition (offline mock): “${word}” — a placeholder meaning used when no API key is set.`;
+  }
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+  const prompt = `Give a concise, plain-English definition of the word: ${word}. Keep it to one or two sentences.`;
+  const r = await client.responses.create({ model: MODEL, input: prompt,  reasoning: { effort: "minimal" }});
+  return r.output_text?.trim() || "No definition available.";
+}
+
 // import OpenAI from "openai";
 // //import { z } from "zod";
 // import type { Book } from "./types";
 
-// const MODEL = process.env.OPENAI_TEXT_MODEL || "gpt-4o-mini";
+// const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 // const HAS_KEY = !!process.env.OPENAI_API_KEY;
 
 // // const BookSchema = z.object({
