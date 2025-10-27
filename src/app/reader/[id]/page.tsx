@@ -30,6 +30,7 @@ function makeDemoBook(id: string): DemoBook {
 export default function ReaderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = useUnwrap(params);
   const [dbBook, setDbBook] = useState<DemoBook | null>(null as any);
+  const [loadingDb, setLoadingDb] = useState(true);
   const book = useMemo(() => dbBook || makeDemoBook(id), [dbBook, id]);
   const [chapterIdx, setChapterIdx] = useState(0);
   const [showSide, setShowSide] = useState(true);
@@ -44,6 +45,9 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
   const [containerWidth, setContainerWidth] = useState(0);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiOutput, setAiOutput] = useState<string>("");
+  const [aiTab, setAiTab] = useState<'quick' | 'characters'>('quick');
+  const [showCharModal, setShowCharModal] = useState(false);
+  const [charDetail, setCharDetail] = useState<any | null>(null);
   const [saving, setSaving] = useState(false);
   const canPrev = chapterIdx > 0 || pageIdx > 0;
   const canNext = chapterIdx < book.chapters.length - 1 || pageIdx < pageCount - 1;
@@ -59,6 +63,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
           setDbBook(json.book);
         }
       } catch {}
+      finally { setLoadingDb(false); }
     })();
   }, [id]);
 
@@ -162,7 +167,13 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
     <div className="container-fluid position-relative">
       <div className="row g-3">
         <div className={paneColClass}>
-          <div className="p-3 p-md-4 rounded-4 border bg-white shadow-sm reader-pane">
+          <div className="p-3 p-md-4 rounded-4 border bg-white shadow-sm reader-pane position-relative">
+            {loadingDb && (
+              <div className="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center" style={{ backdropFilter: 'blur(2px)', background: 'rgba(0,0,0,0.05)', borderRadius: '1rem', zIndex: 5 }}>
+                <div className="spinner-border text-primary mb-2" role="status" aria-hidden="true"></div>
+                <div className="small text-secondary">Loading reader…</div>
+              </div>
+            )}
             <div className="d-flex align-items-center justify-content-between mb-3">
               <div>
                 <h2 className="h5 mb-1">{book.title}</h2>
@@ -249,9 +260,14 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                 </div>
               ) : sideMode === 'ai' ? (
                 <div className="d-flex flex-column gap-3">
-                  <div>
-                    <div className="small text-secondary mb-2">Quick actions</div>
-                    <div className="d-flex flex-column gap-2">
+                  <ul className="nav nav-tabs small">
+                    <li className="nav-item"><button className={`nav-link ${aiTab==='quick'?'active':''}`} onClick={() => setAiTab('quick')}>Quick</button></li>
+                    <li className="nav-item"><button className={`nav-link ${aiTab==='characters'?'active':''}`} onClick={() => setAiTab('characters')}>Characters</button></li>
+                  </ul>
+                  {aiTab === 'quick' ? (
+                    <div>
+                      <div className="small text-secondary mb-2">Quick actions</div>
+                      <div className="d-flex flex-column gap-2">
                       <button
                         className="btn btn-primary w-100"
                         disabled={aiLoading}
@@ -274,24 +290,86 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                       >
                         {aiLoading ? 'Summarizing…' : 'Summarize Chapter'}
                       </button>
-                      <button className="btn btn-outline-primary w-100" onClick={() => alert('Character List')}>Character List</button>
+                      <button className="btn btn-outline-primary w-100" disabled={aiLoading} onClick={async () => {
+                        try {
+                          setAiLoading(true);
+                          setAiOutput("");
+                          // Prefer stored characters if present
+                          const stored = (dbBook as any)?.characters as any[] | undefined;
+                          if (Array.isArray(stored) && stored.length) {
+                            const out = stored.map((c) => `• ${c.name}${c.role ? ' — ' + c.role : ''}`).join('\n');
+                            setAiOutput(out);
+                            return;
+                          }
+                          // Fallback: extract from book text (aggregate a larger sample than one chapter)
+                          const sample = (book?.chapters || []).slice(0, 5).map((c) => (c.content || '')).join('\n\n').replace(/\t+/g, ' ').slice(0, 20000);
+                          const res = await fetch('/api/ai/characters', {
+                            method: 'POST', headers: { 'content-type': 'application/json' },
+                            body: JSON.stringify({ text: sample })
+                          });
+                          const data = await res.json();
+                          const list: string[] = data.characters || [];
+                          setAiOutput(list.length ? list.map((n: string) => `• ${n}`).join('\n') : 'No characters found.');
+                        } catch (e) {
+                          setAiOutput('Failed to extract characters.');
+                        } finally {
+                          setAiLoading(false);
+                        }
+                      }}>Character List</button>
                       <button className="btn btn-outline-primary w-100" onClick={() => alert('Visualize')}>Visualize</button>
                     </div>
-                  </div>
                   {aiOutput && (
                     <div className="border rounded-3 p-2 bg-body-tertiary" style={{ maxHeight: 260, overflow: 'auto' }}>
-                      <div className="small text-secondary mb-1">AI Summary (this chapter)</div>
+                      <div className="small text-secondary mb-1">AI Output</div>
                       <div className="small" style={{ whiteSpace: 'pre-wrap' }}>{aiOutput}</div>
                     </div>
                   )}
                   <div>
-                    <label className="small text-secondary d-block mb-1">Ask a question</label>
-                    <textarea className="form-control" rows={3} placeholder="Ask about this chapter…" />
-                    <div className="d-flex justify-content-end mt-2">
-                      <button className="btn btn-outline-secondary btn-sm me-2" onClick={() => setAiOutput("")}>Clear</button>
-                      <button className="btn btn-primary btn-sm" onClick={() => alert('Ask AI')}>Ask</button>
+                      <label className="small text-secondary d-block mb-1">Ask a question</label>
+                      <textarea className="form-control" rows={3} placeholder="Ask about this chapter…" />
+                      <div className="d-flex justify-content-end mt-2">
+                        <button className="btn btn-outline-secondary btn-sm me-2" onClick={() => setAiOutput("")}>Clear</button>
+                        <button className="btn btn-primary btn-sm" onClick={() => alert('Ask AI')}>Ask</button>
+                      </div>
                     </div>
-                  </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="small text-secondary mb-2">Characters in this book</div>
+                      {Array.isArray((dbBook as any)?.characters) && (dbBook as any).characters.length ? (
+                        <div className="d-flex flex-column gap-2" style={{ maxHeight: 300, overflow: 'auto' }}>
+                          {(dbBook as any).characters.map((c: any, idx: number) => (
+                            <button key={idx} className="border rounded-3 p-2 text-start bg-transparent" style={{ cursor: 'pointer' }} onClick={() => { setCharDetail(c); setShowCharModal(true); }}>
+                              <div className="fw-semibold">{c.name || 'Unknown'}</div>
+                              {c.role && <div className="small text-secondary">{c.role}</div>}
+                              {c.description && <div className="small mt-1">{c.description}</div>}
+                              {Array.isArray(c.personality_traits) && c.personality_traits.length > 0 && (
+                                <div className="small mt-2"><span className="text-secondary">Personality:</span> {c.personality_traits.join(', ')}</div>
+                              )}
+                              {Array.isArray(c.characteristic_traits) && c.characteristic_traits.length > 0 && (
+                                <div className="small"><span className="text-secondary">Traits:</span> {c.characteristic_traits.join(', ')}</div>
+                              )}
+                              {Array.isArray(c.aliases) && c.aliases.length > 0 && (
+                                <div className="small"><span className="text-secondary">Also known as:</span> {c.aliases.join(', ')}</div>
+                              )}
+                              {Array.isArray(c.relationships) && c.relationships.length > 0 && (
+                                <div className="small mt-2">
+                                  <div className="text-secondary">Relationships:</div>
+                                  <ul className="small mb-0">
+                                    {c.relationships.map((r: any, i: number) => (
+                                      <li key={i}>{r.with}: {r.relation}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-secondary small">No character data stored for this book yet.</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="d-flex flex-column gap-3">
@@ -372,6 +450,63 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
       </div>
 
       {/* AI Assistant now opens in side panel via sideMode === 'ai' */}
+
+      {/* Character detail modal */}
+      {showCharModal && (
+        <>
+          <div className="modal fade show d-block" tabIndex={-1} role="dialog" aria-modal="true">
+            <div className="modal-dialog modal-lg modal-dialog-centered">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h5 className="modal-title mb-0">{charDetail?.name || 'Character'}</h5>
+                  <button type="button" className="btn-close" aria-label="Close" onClick={() => setShowCharModal(false)} />
+                </div>
+                <div className="modal-body">
+                  {charDetail?.role && (<div className="mb-2"><strong className="me-1">Role:</strong><span>{charDetail.role}</span></div>)}
+                  {charDetail?.description && (<p className="mb-2">{charDetail.description}</p>)}
+                  {Array.isArray(charDetail?.personality_traits) && charDetail.personality_traits.length > 0 && (
+                    <div className="mb-2"><strong className="me-1">Personality:</strong><span>{charDetail.personality_traits.join(', ')}</span></div>
+                  )}
+                  {Array.isArray(charDetail?.characteristic_traits) && charDetail.characteristic_traits.length > 0 && (
+                    <div className="mb-2"><strong className="me-1">Traits:</strong><span>{charDetail.characteristic_traits.join(', ')}</span></div>
+                  )}
+                  {Array.isArray(charDetail?.aliases) && charDetail.aliases.length > 0 && (
+                    <div className="mb-2"><strong className="me-1">Also known as:</strong><span>{charDetail.aliases.join(', ')}</span></div>
+                  )}
+                  {Array.isArray(charDetail?.relationships) && charDetail.relationships.length > 0 && (
+                    <div className="mb-0">
+                      <strong className="d-block mb-1">Relationships:</strong>
+                      <ul className="mb-0">
+                        {charDetail.relationships.map((r: any, i: number) => (
+                          <li key={i}>
+                            <button
+                              type="button"
+                              className="btn btn-link p-0 align-baseline"
+                              onClick={() => {
+                                const list = (dbBook as any)?.characters as any[] | undefined;
+                                const next = Array.isArray(list) ? list.find((c) => (c.name || '').toLowerCase() === String(r.with || '').toLowerCase()) : null;
+                                if (next) setCharDetail(next); else setCharDetail({ name: r.with, role: '', description: '', personality_traits: [], characteristic_traits: [], aliases: [], relationships: [] });
+                              }}
+                              title="Open character"
+                            >
+                              <span className="fw-semibold">{r.with}</span>
+                            </button>
+                            <span>: {r.relation}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                <div className="modal-footer">
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowCharModal(false)}>Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="modal-backdrop fade show" onClick={() => setShowCharModal(false)} />
+        </>
+      )}
     </div>
   );
 }

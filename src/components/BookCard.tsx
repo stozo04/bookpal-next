@@ -16,9 +16,12 @@ type CardSize = "small" | "medium" | "large";
 type CardLayout = "carousel" | "grid";
 
 export default function BookCard({ book, size = "medium", layout = "carousel" }: { book: DBBook; size?: CardSize; layout?: CardLayout }) {
-  const width = size === "small" ? 120 : size === "large" ? 220 : 160;
-  const height = size === "large" ? 320 : 240;
+  const width = size === "small" ? 160 : size === "large" ? 260 : 200;
+  const height = size === "small" ? 260 : size === "large" ? 420 : 340;
   const containerStyle = layout === "grid" ? undefined : { minWidth: width, width: width, flex: "0 0 auto" } as React.CSSProperties;
+  const publicBase = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const coverPath = (book as any).cover_storage_path as string | undefined;
+  const coverUrl = coverPath ? `${publicBase}/storage/v1/object/public/covers/${coverPath}` : ((book as any).cover_url as string | undefined);
 
   return (
     <div className="book-card" style={containerStyle}>
@@ -26,7 +29,10 @@ export default function BookCard({ book, size = "medium", layout = "carousel" }:
         className="book-poster rounded-4 border"
         style={{
           height,
-          background: coverColorsFromSeed(book.title + book.author),
+          background: coverUrl ? undefined : coverColorsFromSeed(book.title + book.author),
+          backgroundImage: coverUrl ? `url(${coverUrl})` : undefined,
+          backgroundSize: coverUrl ? 'cover' : undefined,
+          backgroundPosition: coverUrl ? 'center' : undefined,
         }}
         title={`${book.title} by ${book.author}`}
       >

@@ -376,7 +376,7 @@ body {
 
 /* Grid view refinements */
 .grid-books .book-card { display: block; width: 100%; }
-.grid-books .book-poster { height: 280px; }
+.grid-books .book-poster { height: 380px; }
 .grid-books .book-card:hover .book-poster { transform: translateY(-4px) scale(1.01); }
 .grid-books .book-overlay { align-items: flex-end; }
 

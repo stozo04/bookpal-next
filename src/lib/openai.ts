@@ -34,11 +34,67 @@ export async function extractAuthorAndTitle(sample: string): Promise<{ author?: 
   }
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
   const prompt = `From the text snippet below, if clearly present, extract the book title and author. If unsure, leave blank. Respond strictly as: Title: <title or blank>\nAuthor: <author or blank>\n\nSNIPPET:\n${text}`;
-  const r = await client.responses.create({ model: MODEL, input: prompt, temperature: 0 });
+  const r = await client.responses.create({ model: MODEL, input: prompt});
   const out = r.output_text || "";
   const author = /Author:\s*(.*)/i.exec(out)?.[1]?.trim() || undefined;
   const title = /Title:\s*(.*)/i.exec(out)?.[1]?.trim() || undefined;
   return { author, title };
+}
+
+export async function extractCharacters(text: string): Promise<string[]> {
+  const snippet = text.slice(0, 8000);
+  if (!HAS_KEY) {
+    // Very naive fallback: pick capitalized tokens as mock names
+    const names = Array.from(new Set((snippet.match(/\b[A-Z][a-z]{2,}\b/g) || []))).slice(0, 6);
+    return names.length ? names : ["The Time Traveller", "Filby", "Psychologist", "Medical Man", "Narrator"];
+  }
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+  const prompt = `From the text below, list the 5–7 most important character names only (no descriptions, one per line). If unsure, skip.
+
+TEXT:\n${snippet}`;
+  const r = await client.responses.create({ model: MODEL, input: prompt });
+  const out = r.output_text?.trim() || '';
+  const lines = out.split(/\r?\n/).map(s => s.trim()).filter(Boolean).slice(0, 7);
+  return lines;
+}
+
+export type CharacterProfile = {
+  name: string;
+  aliases?: string[];
+  role?: string;
+  description?: string;
+  personality_traits?: string[];
+  characteristic_traits?: string[];
+  relationships?: { with: string; relation: string }[];
+};
+
+export async function extractCharactersRich(text: string): Promise<CharacterProfile[]> {
+  const sample = text.slice(0, 60000);
+  if (!HAS_KEY) {
+    const names = await extractCharacters(sample);
+    return names.map((n) => ({ name: n }));
+  }
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+  const prompt = `From the book text below, extract the 5–15 most important characters and return ONLY a JSON array.
+Each item must have: name (string); aliases (string[], optional); role (string, optional);
+description (string, optional, 1 sentence); personality_traits (string[], optional, 3–6);
+characteristic_traits (string[], optional, 3–6); relationships (array of { with: string, relation: string }, optional).
+No commentary before or after the JSON.
+
+TEXT:\n${sample}`;
+  const r = await client.responses.create({ model: MODEL, input: prompt });
+  const out = r.output_text?.trim() || "[]";
+  // Try direct JSON parse, else attempt to strip code fences
+  const tryParse = (s: string) => {
+    try { return JSON.parse(s); } catch { return null; }
+  };
+  let parsed = tryParse(out);
+  if (!parsed) {
+    const m = /```(?:json)?\s*([\s\S]*?)```/i.exec(out);
+    if (m) parsed = tryParse(m[1]);
+  }
+  if (!parsed || !Array.isArray(parsed)) return [];
+  return parsed as CharacterProfile[];
 }
 
 // import OpenAI from "openai";

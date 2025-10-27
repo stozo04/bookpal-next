@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { supabaseService } from "@/lib/supabaseServer";
 // @ts-ignore - 'pdf-parse' has no types
 import pdfParse from "pdf-parse";
-import { extractAuthorAndTitle, summarizeChunk } from "@/lib/openai";
+import { extractAuthorAndTitle, summarizeChunk, extractCharactersRich } from "@/lib/openai";
 
 export const runtime = "nodejs";
 
@@ -132,6 +132,19 @@ export async function POST(req: Request) {
       if (meta.title) titleGuess = meta.title;
       await logStep(bookId, `Metadata: title="${titleGuess || book.title || ''}" author="${author || book.author || ''}"`);
     } catch {}
+
+    // Extract character profiles (best-effort)
+    try {
+      const allText = sections.map((s) => `${s.title}\n\n${s.content}`).join("\n\n");
+      const chars = await extractCharactersRich(allText);
+      await logStep(bookId, `Characters extracted: ${chars.length}`);
+      await supabaseService
+        .from("books")
+        .update({ characters: chars as any } as any)
+        .eq("id", bookId);
+    } catch (e: any) {
+      await logStep(bookId, `Characters extract failed: ${e?.message || e}`, 'error');
+    }
 
     // Update book record
     await supabaseService
