@@ -42,6 +42,8 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
   const [pageCount, setPageCount] = useState(1);
   const [chapterPageCounts, setChapterPageCounts] = useState<number[]>([]);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiOutput, setAiOutput] = useState<string>("");
   const canPrev = chapterIdx > 0 || pageIdx > 0;
   const canNext = chapterIdx < book.chapters.length - 1 || pageIdx < pageCount - 1;
   useEffect(() => {
@@ -204,15 +206,43 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                   <div>
                     <div className="small text-secondary mb-2">Quick actions</div>
                     <div className="d-flex flex-column gap-2">
-                      <button className="btn btn-primary w-100" onClick={() => alert('Summarize Chapter')}>Summarize Chapter</button>
+                      <button
+                        className="btn btn-primary w-100"
+                        disabled={aiLoading}
+                        onClick={async () => {
+                          try {
+                            setAiLoading(true);
+                            setAiOutput("");
+                            const res = await fetch('/api/ai/summarize', {
+                              method: 'POST', headers: { 'content-type': 'application/json' },
+                              body: JSON.stringify({ text: chapter.content })
+                            });
+                            const data = await res.json();
+                            setAiOutput(data.summary || data.error || 'Unable to summarize chapter.');
+                          } catch (e: any) {
+                            setAiOutput('Failed to summarize chapter.');
+                          } finally {
+                            setAiLoading(false);
+                          }
+                        }}
+                      >
+                        {aiLoading ? 'Summarizing…' : 'Summarize Chapter'}
+                      </button>
                       <button className="btn btn-outline-primary w-100" onClick={() => alert('Character List')}>Character List</button>
                       <button className="btn btn-outline-primary w-100" onClick={() => alert('Visualize')}>Visualize</button>
                     </div>
                   </div>
+                  {aiOutput && (
+                    <div className="border rounded-3 p-2 bg-body-tertiary" style={{ maxHeight: 260, overflow: 'auto' }}>
+                      <div className="small text-secondary mb-1">AI Summary (this chapter)</div>
+                      <div className="small" style={{ whiteSpace: 'pre-wrap' }}>{aiOutput}</div>
+                    </div>
+                  )}
                   <div>
                     <label className="small text-secondary d-block mb-1">Ask a question</label>
                     <textarea className="form-control" rows={3} placeholder="Ask about this chapter…" />
                     <div className="d-flex justify-content-end mt-2">
+                      <button className="btn btn-outline-secondary btn-sm me-2" onClick={() => setAiOutput("")}>Clear</button>
                       <button className="btn btn-primary btn-sm" onClick={() => alert('Ask AI')}>Ask</button>
                     </div>
                   </div>
@@ -310,6 +340,7 @@ function ReaderContent({ text, font, fontFamily, width, sideKey, pageIdx, onPage
   const [popPos, setPopPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [popOpen, setPopOpen] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
+  const [popLoading, setPopLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [pages, setPages] = useState<string[]>([text]);
 
@@ -520,17 +551,13 @@ function ReaderContent({ text, font, fontFamily, width, sideKey, pageIdx, onPage
           {menuKind === 'word' ? (
             <button className="dropdown-item" role="menuitem" onClick={async () => {
               setMenuOpen(false);
-              // call through API route to ensure server-side key usage and visible network entry
-              const res = await fetch(`/api/ai/define?word=${encodeURIComponent(selectedText)}`);
-              const data = await res.json();
-              const def = data.definition || data.error || 'No definition available.';
+              // position near selection
               const sel = window.getSelection?.();
               let x = menuPos.x, y = menuPos.y;
               try {
                 if (sel && sel.rangeCount > 0) {
                   const rect = sel.getRangeAt(0).getBoundingClientRect();
                   x = rect.left + rect.width / 2;
-                  // default above; clamp inside viewport and flip if needed
                   const vh = window.innerHeight || document.documentElement.clientHeight || 800;
                   const vw = window.innerWidth || document.documentElement.clientWidth || 1200;
                   const maxWidth = 320; const half = maxWidth / 2; const margin = 12;
@@ -540,14 +567,59 @@ function ReaderContent({ text, font, fontFamily, width, sideKey, pageIdx, onPage
                   if (!preferTop && y + 140 > vh) { y = rect.top - 8; }
                 }
               } catch {}
-              setPopContent(def);
+              // show loading popover immediately (fallback renderer will show spinner)
+              setPopLoading(true);
+              setPopContent('');
               setPopPos({ x, y });
               setShowFallback(true);
               setPopOpen(true);
+              try {
+                const res = await fetch(`/api/ai/define?word=${encodeURIComponent(selectedText)}`);
+                const data = await res.json();
+                const def = data.definition || data.error || 'No definition available.';
+                setPopContent(def);
+              } catch (e) {
+                setPopContent('Failed to fetch definition.');
+              } finally {
+                setPopLoading(false);
+              }
             }}>Definition</button>
           ) : (
             <>
-              <button className="dropdown-item" role="menuitem" onClick={() => { setMenuOpen(false); alert('Summarize selection'); }}>Summarize</button>
+              <button className="dropdown-item" role="menuitem" onClick={async () => {
+                const selText = selectedText;
+                setMenuOpen(false);
+                const sel = window.getSelection?.();
+                let x = menuPos.x, y = menuPos.y;
+                try {
+                  if (sel && sel.rangeCount > 0) {
+                    const rect = sel.getRangeAt(0).getBoundingClientRect();
+                    x = rect.left + rect.width / 2;
+                    const vh = window.innerHeight || document.documentElement.clientHeight || 800;
+                    const vw = window.innerWidth || document.documentElement.clientWidth || 1200;
+                    const maxWidth = 360; const half = maxWidth / 2; const margin = 12;
+                    x = Math.max(half + margin, Math.min(vw - half - margin, x));
+                    const preferTop = rect.top > 100;
+                    y = preferTop ? rect.top - 8 : rect.bottom + 8;
+                    if (!preferTop && y + 180 > vh) { y = rect.top - 8; }
+                  }
+                } catch {}
+                setPopLoading(true);
+                setPopContent('');
+                setPopPos({ x, y });
+                setShowFallback(true);
+                setPopOpen(true);
+                try {
+                  const res = await fetch('/api/ai/summarize', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: selText }) });
+                  const data = await res.json();
+                  const content = data.summary || data.error || 'Unable to summarize selection.';
+                  setPopContent(content);
+                } catch (e) {
+                  setPopContent('Failed to summarize selection.');
+                } finally {
+                  setPopLoading(false);
+                }
+              }}>Summarize</button>
               <button className="dropdown-item" role="menuitem" onClick={() => { setMenuOpen(false); alert('Visualize selection'); }}>Visualize</button>
             </>
           )}
@@ -558,8 +630,20 @@ function ReaderContent({ text, font, fontFamily, width, sideKey, pageIdx, onPage
       <button ref={anchorRef} className="reader-popover-anchor" style={{ left: popPos.x, top: popPos.y }} aria-hidden="true" />
       {popOpen && showFallback && (
         <div className="reader-def-popover" style={{ left: popPos.x, top: popPos.y }}>
-          <div className="reader-def-popover-title">Definition: {selectedText}</div>
-          <div className="reader-def-popover-body">{popContent}</div>
+          <div className="d-flex align-items-center justify-content-between">
+            <div className="reader-def-popover-title">{menuKind === 'word' ? `Definition: ${selectedText}` : 'Summary'}</div>
+            <button className="btn btn-sm btn-outline-secondary" onClick={() => setPopOpen(false)}>Close</button>
+          </div>
+          <div className="reader-def-popover-body">
+            {popLoading ? (
+              <div className="d-flex align-items-center gap-2">
+                <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span>{menuKind === 'word' ? 'Looking up…' : 'Summarizing…'}</span>
+              </div>
+            ) : (
+              popContent
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -13,29 +13,12 @@ export async function POST(req: Request) {
     if (!text || typeof text !== 'string' || text.trim().length < 2) {
       return NextResponse.json({ ok: false, error: 'Missing text' }, { status: 400 });
     }
-    const max = 2000; // guard
+    const max = 4000;
     const input = text.length > max ? text.slice(0, max) : text;
     const summary = await summarizeChunk(input);
     return NextResponse.json({ ok: true, summary });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || 'Failed' }, { status: 500 });
-  }
-}
-
-import { NextRequest } from "next/server";
-import { defineWord } from "@/lib/openai";
-
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const word = (searchParams.get("word") || "").trim();
-  if (!word) {
-    return new Response(JSON.stringify({ error: "Missing word" }), { status: 400, headers: { "content-type": "application/json" } });
-  }
-  try {
-    const def = await defineWord(word);
-    return new Response(JSON.stringify({ definition: def }), { status: 200, headers: { "content-type": "application/json" } });
-  } catch (e: any) {
-    return new Response(JSON.stringify({ error: e?.message || "Failed to define" }), { status: 500, headers: { "content-type": "application/json" } });
   }
 }
 
