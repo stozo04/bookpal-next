@@ -91,6 +91,16 @@ export default function EditBookClient({ book }: { book: BookInfo }) {
             <button className="btn btn-outline-secondary btn-sm" onClick={uploadCover} disabled={working}>Upload</button>
           </div>
           <button className="btn btn-outline-primary btn-sm" onClick={findCover} disabled={working}>Find cover</button>
+          <button className="btn btn-outline-secondary btn-sm" onClick={async () => {
+            setWorking(true); setMessage('');
+            try {
+              const res = await fetch('/api/books/characters/build', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bookId: book.id }) });
+              const j = await res.json();
+              setMessage(j.ok ? `Rebuilt characters (${j.count})` : (j.error || 'Failed'));
+            } catch (e: any) {
+              setMessage(e?.message || 'Failed');
+            } finally { setWorking(false); }
+          }}>Rebuild characters</button>
         </div>
       </div>
       <div className="col-12 col-md-8">

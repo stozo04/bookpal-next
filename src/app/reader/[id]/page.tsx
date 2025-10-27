@@ -38,7 +38,8 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
   const [fontSize, setFontSize] = useState(18);
   const [width, setWidth] = useState<'narrow' | 'comfort' | 'wide'>("comfort");
   const [fontFamily, setFontFamily] = useState<string>("");
-  const chapter = book.chapters[chapterIdx];
+  const safeChapterIdx = Math.min(Math.max(0, chapterIdx), Math.max(0, book.chapters.length - 1));
+  const chapter = book.chapters[safeChapterIdx];
   const [pageIdx, setPageIdx] = useState(0);
   const [pageCount, setPageCount] = useState(1);
   const [chapterPageCounts, setChapterPageCounts] = useState<number[]>([]);
@@ -54,6 +55,9 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
   useEffect(() => {
     try { localStorage.setItem('lastOpenedBookId', id); } catch {}
   }, [id]);
+  useEffect(() => {
+    if (chapterIdx !== safeChapterIdx) setChapterIdx(safeChapterIdx);
+  }, [chapterIdx, safeChapterIdx]);
   useEffect(() => {
     (async () => {
       try {
@@ -178,7 +182,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
               <div>
                 <h2 className="h5 mb-1">{book.title}</h2>
                 <div className="text-secondary small">by {book.author}</div>
-                <div className="text-secondary small">Chapter {chapterIdx + 1} · Page {pageIdx + 1}/{pageCount}</div>
+                <div className="text-secondary small">Chapter {safeChapterIdx + 1} · Page {pageIdx + 1}/{pageCount}</div>
               </div>
               <div className="button-container">
                 <div className="button-row">
