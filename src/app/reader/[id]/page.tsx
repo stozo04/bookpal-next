@@ -37,8 +37,10 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
   const [fontSize, setFontSize] = useState(18);
   const [width, setWidth] = useState<'narrow' | 'comfort' | 'wide'>("comfort");
   const chapter = book.chapters[chapterIdx];
-  const canPrev = chapterIdx > 0;
-  const canNext = chapterIdx < book.chapters.length - 1;
+  const [pageIdx, setPageIdx] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  const canPrev = chapterIdx > 0 || pageIdx > 0;
+  const canNext = chapterIdx < book.chapters.length - 1 || pageIdx < pageCount - 1;
   useEffect(() => {
     try { localStorage.setItem('lastOpenedBookId', id); } catch {}
   }, [id]);
@@ -53,6 +55,27 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
       } catch {}
     })();
   }, [id]);
+
+  // Reset pagination when chapter changes
+  useEffect(() => { setPageIdx(0); }, [chapterIdx]);
+
+  function handleNext() {
+    if (pageIdx < pageCount - 1) {
+      setPageIdx((p) => p + 1);
+    } else if (chapterIdx < book.chapters.length - 1) {
+      setChapterIdx((i) => i + 1);
+      setPageIdx(0);
+    }
+  }
+
+  function handlePrev() {
+    if (pageIdx > 0) {
+      setPageIdx((p) => p - 1);
+    } else if (chapterIdx > 0) {
+      setChapterIdx((i) => Math.max(0, i - 1));
+      setPageIdx(0);
+    }
+  }
   // Hide app sidebar for focused reading
   useEffect(() => {
     document.body.classList.add('reader-fullscreen');
@@ -84,12 +107,13 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
               <div>
                 <h2 className="h5 mb-1">{book.title}</h2>
                 <div className="text-secondary small">by {book.author}</div>
+                <div className="text-secondary small">Chapter {chapterIdx + 1} · Page {pageIdx + 1}/{pageCount}</div>
               </div>
               <div className="button-container">
                 <div className="button-row">
                   <button className="btn btn-outline-secondary btn-sm" onClick={() => { setSideMode('toc'); setShowSide((s) => !s); }}>{showSide && sideMode==='toc' ? 'Hide' : 'Chapters'}</button>
-                  <button className="btn btn-outline-secondary btn-sm" disabled={!canPrev} onClick={() => setChapterIdx((i) => Math.max(0, i - 1))}>Prev</button>
-                  <button className="btn btn-outline-secondary btn-sm" disabled={!canNext} onClick={() => setChapterIdx((i) => Math.min(book.chapters.length - 1, i + 1))}>Next</button>
+                  <button className="btn btn-outline-secondary btn-sm" disabled={!canPrev} onClick={handlePrev}>Prev</button>
+                  <button className="btn btn-outline-secondary btn-sm" disabled={!canNext} onClick={handleNext}>Next</button>
                   <Link href="/library" className="btn btn-primary btn-sm">Back to Library</Link>
                 </div>
                 <div className="button-row">
@@ -105,7 +129,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
               </div>
             </div>
             <h3 className="h6 mb-3">{chapter.title}</h3>
-            <ReaderContent text={chapter.content} font={fontSize} width={width} sideKey={`${sideMode}-${showSide}`} />
+            <ReaderContent text={chapter.content} font={fontSize} width={width} sideKey={`${sideMode}-${showSide}`} pageIdx={pageIdx} onPageCount={setPageCount} />
             {('summary' in chapter) && (chapter as any).summary && (
               <div className="mt-4 p-3 rounded-3 bg-body-tertiary border">
                 <div className="small text-secondary mb-1">AI Summary</div>
@@ -180,7 +204,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
   );
 }
 
-function ReaderContent({ text, font, width, sideKey }: { text: string; font: number; width: 'narrow' | 'comfort' | 'wide'; sideKey: string }) {
+function ReaderContent({ text, font, width, sideKey, pageIdx, onPageCount }: { text: string; font: number; width: 'narrow' | 'comfort' | 'wide'; sideKey: string; pageIdx: number; onPageCount: (n: number) => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [menuKind, setMenuKind] = useState<'word' | 'text'>('text');
@@ -190,6 +214,8 @@ function ReaderContent({ text, font, width, sideKey }: { text: string; font: num
   const [popPos, setPopPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [popOpen, setPopOpen] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [pages, setPages] = useState<string[]>([text]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
@@ -250,12 +276,33 @@ function ReaderContent({ text, font, width, sideKey }: { text: string; font: num
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sideKey]);
 
+  // Recompute pages when text/width/font changes
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    // Measure approx chars per page based on container width and font size
+    // Very rough heuristic: characters per line ~= containerWidth / (fontSize * 0.6)
+    const containerWidth = el.clientWidth || 600;
+    const charsPerLine = Math.max(30, Math.floor(containerWidth / (font * 0.6)));
+    const linesPerPage = width === 'narrow' ? 24 : width === 'comfort' ? 28 : 32;
+    const charsPerPage = Math.max(500, Math.floor(charsPerLine * linesPerPage));
+    const arr: string[] = [];
+    let i = 0;
+    const clean = text.replace(/\n{3,}/g, "\n\n");
+    while (i < clean.length) {
+      arr.push(clean.slice(i, i + charsPerPage));
+      i += charsPerPage;
+    }
+    setPages(arr.length ? arr : [clean]);
+    onPageCount(arr.length || 1);
+  }, [text, font, width, sideKey, onPageCount]);
+
+  const pageText = pages[Math.min(pageIdx, Math.max(0, pages.length - 1))] || '';
+
   return (
     <div>
-      <div className={`reader-content ${width}`} style={{ fontSize: font }} onContextMenu={handleContextMenu}>
-        <p>{text}</p>
-        <p>{text}</p>
-        <p>{text}</p>
+      <div ref={containerRef} className={`reader-content ${width}`} style={{ fontSize: font }} onContextMenu={handleContextMenu}>
+        {pageText.split(/\n\n/).map((p, i) => (<p key={i}>{p}</p>))}
       </div>
 
       {menuOpen && (
