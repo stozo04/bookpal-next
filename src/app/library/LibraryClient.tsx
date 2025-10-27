@@ -158,7 +158,23 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
         {/* Continue reading: use server-side recent progress; fallback to last-opened */}
         {(continueBooks.length > 0 ? continueBooks : (lastOpenedId ? filtered.filter((b) => b.id === lastOpenedId) : [])).length > 0 && (
           <div className="col-12">
-            <SectionRow title="Continue Reading" items={(continueBooks.length > 0 ? continueBooks : filtered.filter((b) => b.id === lastOpenedId))} />
+            {view === 'grid' ? (
+              <div className="p-3 rounded-4 bg-transparent">
+                <div className="d-flex align-items-center justify-content-between mb-2">
+                  <h6 className="mb-0">Continue Reading</h6>
+                  <small className="text-secondary">Grid view</small>
+                </div>
+                <div className="row g-4 grid-books">
+                  {(continueBooks.length > 0 ? continueBooks : filtered.filter((b) => b.id === lastOpenedId)).map((b) => (
+                    <div className="col-6 col-sm-4 col-md-4 col-lg-3" key={b.id}>
+                      <BookCard book={b} size="large" layout="grid" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <SectionRow title="Continue Reading" items={(continueBooks.length > 0 ? continueBooks : filtered.filter((b) => b.id === lastOpenedId))} />
+            )}
           </div>
         )}
 
@@ -181,7 +197,7 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
               <GridSkeleton ready={filtered.length > 0} count={12} />
               <div className="row g-4 grid-books">
                 {filtered.map((b) => (
-                  <div className="col-6 col-sm-4 col-md-3 col-lg-2" key={b.id}>
+                  <div className="col-6 col-sm-4 col-md-4 col-lg-3" key={b.id}>
                     <div className="position-relative">
                       <BookCard book={b} size="large" layout="grid" />
                       {b.mime_type === 'application/pdf' && (!b.chapters || b.chapters.length === 0) && (
@@ -249,7 +265,7 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
   );
 }
 
-function SectionRow({ title, items }: { title: string; items: DBBook[] }) {
+function SectionRow({ title, items, layout = 'carousel', size }: { title: string; items: DBBook[]; layout?: 'carousel' | 'grid'; size?: 'small' | 'medium' | 'large' }) {
   const carouselRef = useRef<HTMLDivElement | null>(null);
   if (!items || items.length === 0) return null;
 
@@ -282,7 +298,7 @@ function SectionRow({ title, items }: { title: string; items: DBBook[] }) {
         aria-label={`${title} carousel`}
       >
         {items.map((b) => (
-          <BookCard key={b.id} book={b} />
+          <BookCard key={b.id} book={b} layout={layout} size={size} />
         ))}
       </div>
     </div>
