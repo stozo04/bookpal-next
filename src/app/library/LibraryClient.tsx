@@ -173,7 +173,7 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
                 </div>
               </div>
             ) : (
-              <SectionRow title="Continue Reading" items={(continueBooks.length > 0 ? continueBooks : filtered.filter((b) => b.id === lastOpenedId))} />
+              <SectionRow title="Continue Reading" items={(continueBooks.length > 0 ? continueBooks : filtered.filter((b) => b.id === lastOpenedId))} layout="grid" size="large" />
             )}
           </div>
         )}
@@ -275,6 +275,24 @@ function SectionRow({ title, items, layout = 'carousel', size }: { title: string
     const width = el.clientWidth;
     el.scrollBy({ left: dir * width * 0.6, behavior: "smooth" });
   };
+
+  if (layout === 'grid') {
+    return (
+      <div className="p-3 rounded-4 bg-transparent">
+        <div className="d-flex align-items-center justify-content-between mb-2">
+          <h6 className="mb-0">{title}</h6>
+          <small className="text-secondary">Grid view</small>
+        </div>
+        <div className="row g-4 grid-books">
+          {items.map((b) => (
+            <div key={b.id} className="col-6 col-sm-4 col-md-4 col-lg-3">
+              <BookCard book={b} size={size || 'large'} layout="grid" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-3 rounded-4 bg-transparent">
