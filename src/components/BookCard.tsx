@@ -60,6 +60,12 @@ export default function BookCard({ book, size = "medium", layout = "carousel" }:
               >
                 <InfoCircle size={16} />
               </Link>
+              {((book as any).mime_type === 'application/pdf') && (
+                <Link href={`/books/logs/${book.id}`} className="btn btn-icon btn-outline-light" aria-label="Logs">
+                  {/* small dot icon rendered via bullet */}
+                  <span style={{fontSize:12, lineHeight:1}}>⧉</span>
+                </Link>
+              )}
             </>
           ) : (
             <>
@@ -81,6 +87,11 @@ export default function BookCard({ book, size = "medium", layout = "carousel" }:
               >
                 <InfoCircle size={14} /> Details
               </Link>
+              {((book as any).mime_type === 'application/pdf') && (
+                <Link href={`/books/logs/${book.id}`} className="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-1">
+                  Logs
+                </Link>
+              )}
             </>
           )}
         </div>
