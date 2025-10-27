@@ -23,6 +23,45 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
     if (initialBooks && initialBooks.length > 0) setLibrary(initialBooks);
     // we only want to run this when initialBooks changes
   }, [initialBooks, setLibrary]);
+  // Poll for updates when a PDF is pending processing (simple dev UX)
+  useEffect(() => {
+    const anyPending = library.some((b) => b.mime_type === 'application/pdf' && (!b.chapters || b.chapters.length === 0));
+    if (!anyPending) return;
+    const id = setInterval(async () => {
+      try {
+        const res = await fetch('/api/books/list');
+        const json = await res.json();
+        if (json?.ok && Array.isArray(json.books)) setLibrary(json.books);
+      } catch {}
+    }, 4000);
+    return () => clearInterval(id);
+  }, [library, setLibrary]);
+
+  // Toast on completion: when a pending PDF gains chapters
+  const prevPendingIdsRef = useRef<Set<string>>(new Set());
+  const [toastBook, setToastBook] = useState<DBBook | null>(null);
+  useEffect(() => {
+    const currentPending = new Set(library.filter((b) => b.mime_type === 'application/pdf' && (!b.chapters || b.chapters.length === 0)).map((b) => b.id));
+    // find any that were pending before but not now
+    for (const b of library) {
+      if (prevPendingIdsRef.current.has(b.id) && (!(!b.chapters || b.chapters.length === 0))) {
+        setToastBook(b);
+        break;
+      }
+    }
+    prevPendingIdsRef.current = currentPending;
+  }, [library]);
+
+  useEffect(() => {
+    if (!toastBook) return;
+    const el = document.getElementById('lib-complete-toast');
+    // Bootstrap toast if available
+    const BS = (window as any).bootstrap;
+    if (el && BS?.Toast) {
+      const t = new BS.Toast(el, { autohide: true, delay: 4500 });
+      t.show();
+    }
+  }, [toastBook]);
 
   // read last opened book id client-side
   useEffect(() => {
@@ -119,7 +158,7 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
           </>
         ) : (
           <div className="col-12">
-            <div className="p-3 rounded-4 bg-transparent">
+          <div className="p-3 rounded-4 bg-transparent">
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <h6 className="mb-0">All Books</h6>
                 <small className="text-secondary">Grid view</small>
@@ -128,13 +167,42 @@ export default function LibraryClient({ initialBooks = [] }: Props) {
               <div className="row g-4 grid-books">
                 {filtered.map((b) => (
                   <div className="col-6 col-sm-4 col-md-3 col-lg-2" key={b.id}>
-                    <BookCard book={b} size="large" layout="grid" />
+                    <div className="position-relative">
+                      <BookCard book={b} size="large" layout="grid" />
+                      {b.mime_type === 'application/pdf' && (!b.chapters || b.chapters.length === 0) && (
+                        <div className="position-absolute top-0 start-0 translate-middle d-flex align-items-center gap-2">
+                          <span className="badge rounded-pill text-bg-warning">Processing</span>
+                          <Link href={`/books/logs/${b.id}`} className="btn btn-sm btn-outline-light">View logs</Link>
+                          {/* Dev-only: process now */}
+                          <button className="btn btn-sm btn-outline-light" onClick={async () => {
+                            try { await fetch('/api/books/structure-pdf', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bookId: b.id }) }); } catch {}
+                          }}>Process now</button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
         )}
+
+        {/* Completion toast */}
+        <div className="position-fixed bottom-0 end-0 p-3" style={{ zIndex: 1080 }}>
+          <div id="lib-complete-toast" className="toast align-items-center text-bg-dark border-0" role="status" aria-live="polite" aria-atomic="true">
+            <div className="d-flex">
+              <div className="toast-body">
+                {toastBook ? (<>
+                  <span className="me-2">Chapters ready for</span>
+                  <strong>{toastBook.title}</strong>
+                </>) : 'Chapters ready'}
+              </div>
+              <div className="p-2 pt-3">
+                {toastBook && <Link href={`/reader/${toastBook.id}`} className="btn btn-sm btn-outline-light">Open Reader</Link>}
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Small library list fallback for accessibility */}
         <div className="col-12 d-lg-none">

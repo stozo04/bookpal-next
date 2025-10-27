@@ -9,8 +9,36 @@ export async function defineWord(word: string): Promise<string> {
   }
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
   const prompt = `Give a concise, plain-English definition of the word: ${word}. Keep it to one or two sentences.`;
-  const r = await client.responses.create({ model: MODEL, input: prompt,  reasoning: { effort: "minimal" }});
+  const r = await client.responses.create({ model: MODEL, input: prompt });
   return r.output_text?.trim() || "No definition available.";
+}
+
+export async function summarizeChunk(text: string): Promise<string> {
+  const trimmed = text.trim();
+  if (!HAS_KEY) {
+    const first = trimmed.split(/[\.\!\?]/)[0]?.slice(0, 180) || trimmed.slice(0, 180);
+    return first + (first.endsWith(".") ? "" : ".");
+  }
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+  const prompt = `Summarize the following text in 1-2 concise sentences for a chapter preview. Avoid adding information not present.\n\nTEXT:\n${trimmed}`;
+  const r = await client.responses.create({ model: MODEL, input: prompt });
+  return r.output_text?.trim() || trimmed.slice(0, 180);
+}
+
+export async function extractAuthorAndTitle(sample: string): Promise<{ author?: string; title?: string }> {
+  const text = sample.slice(0, 4000);
+  if (!HAS_KEY) {
+    const mAuthor = /author\s*[:\-]\s*(.+)/i.exec(text);
+    const mTitle = /title\s*[:\-]\s*(.+)/i.exec(text);
+    return { author: mAuthor?.[1]?.trim(), title: mTitle?.[1]?.trim() };
+  }
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+  const prompt = `From the text snippet below, if clearly present, extract the book title and author. If unsure, leave blank. Respond strictly as: Title: <title or blank>\nAuthor: <author or blank>\n\nSNIPPET:\n${text}`;
+  const r = await client.responses.create({ model: MODEL, input: prompt, temperature: 0 });
+  const out = r.output_text || "";
+  const author = /Author:\s*(.*)/i.exec(out)?.[1]?.trim() || undefined;
+  const title = /Title:\s*(.*)/i.exec(out)?.[1]?.trim() || undefined;
+  return { author, title };
 }
 
 // import OpenAI from "openai";

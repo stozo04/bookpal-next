@@ -16,15 +16,25 @@ export default function UploadDrop({
     setBusy(true);
     setErr(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch("/api/books/structure", { method: "POST", body: fd });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json?.error || "Failed");
-
-      // json.book is DB row (saved), also contains chapters/characters
-      onStructured(json.book);
-      onSaved?.(json.book);     // ▶ push to library
+      const ext = (file.name.split('.').pop() || '').toLowerCase();
+      if (ext === 'pdf') {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await fetch('/api/books/upload', { method: 'POST', body: fd });
+        const json = await res.json();
+        if (!res.ok || !json.ok) throw new Error(json?.error || 'Failed');
+        onSaved?.(json.book);
+        // trigger background structuring for PDF
+        try { await fetch('/api/books/structure-pdf', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ bookId: json.book.id }) }); } catch {}
+      } else {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/api/books/structure", { method: "POST", body: fd });
+        const json = await res.json();
+        if (!res.ok || !json.ok) throw new Error(json?.error || "Failed");
+        onStructured(json.book);
+        onSaved?.(json.book);
+      }
     } catch (e: any) {
       setErr(e.message || "Upload failed");
     } finally {
@@ -37,7 +47,7 @@ export default function UploadDrop({
     <div className="p-4 rounded-4 border bg-white shadow-sm">
       <h5 className="mb-3">Upload a Book</h5>
       <p className="text-secondary mb-3">
-        Supported now: <code>.txt</code> (≤ 1 MB). EPUB coming next.
+        Supported now: <code>.txt</code> (≤ 1 MB) and <code>.pdf</code> (stored, structured soon).
       </p>
 
       <div
@@ -60,7 +70,7 @@ export default function UploadDrop({
         <input
           ref={inputRef}
           type="file"
-          accept=".txt,text/plain"
+          accept=".txt,text/plain,application/pdf,.pdf"
           className="d-none"
           onChange={(e) => handleFiles(e.target.files)}
         />
@@ -69,7 +79,7 @@ export default function UploadDrop({
       {err && <div className="alert alert-danger py-2">{err}</div>}
 
       <div className="text-muted small">
-        Tip: If no OpenAI key is set, we return mock structured output so you can continue building UI.
+        Tip: If no OpenAI key is set, we return mock structured output for .txt; PDFs are stored and can be processed later.
       </div>
     </div>
   );

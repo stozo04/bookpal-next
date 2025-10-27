@@ -29,7 +29,8 @@ function makeDemoBook(id: string): DemoBook {
 
 export default function ReaderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = useUnwrap(params);
-  const book = useMemo(() => makeDemoBook(id), [id]);
+  const [dbBook, setDbBook] = useState<DemoBook | null>(null as any);
+  const book = useMemo(() => dbBook || makeDemoBook(id), [dbBook, id]);
   const [chapterIdx, setChapterIdx] = useState(0);
   const [showSide, setShowSide] = useState(true);
   const [sideMode, setSideMode] = useState<"toc" | "ai" | "settings">("toc");
@@ -40,6 +41,17 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
   const canNext = chapterIdx < book.chapters.length - 1;
   useEffect(() => {
     try { localStorage.setItem('lastOpenedBookId', id); } catch {}
+  }, [id]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/books/get?id=${id}`);
+        const json = await res.json();
+        if (json?.ok && json.book?.chapters?.length) {
+          setDbBook(json.book);
+        }
+      } catch {}
+    })();
   }, [id]);
   // Hide app sidebar for focused reading
   useEffect(() => {
@@ -94,6 +106,12 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
             </div>
             <h3 className="h6 mb-3">{chapter.title}</h3>
             <ReaderContent text={chapter.content} font={fontSize} width={width} sideKey={`${sideMode}-${showSide}`} />
+            {('summary' in chapter) && (chapter as any).summary && (
+              <div className="mt-4 p-3 rounded-3 bg-body-tertiary border">
+                <div className="small text-secondary mb-1">AI Summary</div>
+                <div>{(chapter as any).summary}</div>
+              </div>
+            )}
           </div>
         </div>
         {showSide && (

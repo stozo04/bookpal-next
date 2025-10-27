@@ -1,5 +1,5 @@
 // src/lib/types.ts
-export type Chapter = { title: string; content: string };
+export type Chapter = { title: string; content: string; summary?: string };
 
 export type Book = {
   title: string;
@@ -16,4 +16,7 @@ export type DBBook = {
   characters: string[];
   chapters: Chapter[];
   created_at: string;
+  storage_path?: string;
+  mime_type?: string;
+  status?: string;
 };

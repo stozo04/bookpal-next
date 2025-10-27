@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import LibraryClient from "./LibraryClient";
-import { supabaseAnon } from "@/lib/supabaseServer";
+import { supabaseService } from "@/lib/supabaseServer";
 import type { DBBook } from "@/lib/types";
 
 export default async function LibraryPage() {
@@ -16,7 +16,7 @@ export default async function LibraryPage() {
   }
   const userId = (session.user as any).id;
 
-  const { data: books = [] } = await supabaseAnon
+  const { data: books = [] } = await supabaseService
     .from("books")
     .select("*")
     .eq("user_id", userId)
