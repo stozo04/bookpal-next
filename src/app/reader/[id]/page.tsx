@@ -44,6 +44,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
   const [containerWidth, setContainerWidth] = useState(0);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiOutput, setAiOutput] = useState<string>("");
+  const [saving, setSaving] = useState(false);
   const canPrev = chapterIdx > 0 || pageIdx > 0;
   const canNext = chapterIdx < book.chapters.length - 1 || pageIdx < pageCount - 1;
   useEffect(() => {
@@ -104,6 +105,37 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
       setPageIdx(0);
     }
   }
+
+  // Autosave progress (debounced)
+  useEffect(() => {
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        await fetch('/api/books/progress', {
+          method: 'POST', headers: { 'content-type': 'application/json' }, signal: ctrl.signal,
+          body: JSON.stringify({ bookId: book.id, chapterIdx, pageIdx, fontSize, width, fontFamily })
+        });
+      } catch {}
+    }, 600);
+    return () => { clearTimeout(t); ctrl.abort(); };
+  }, [book.id, chapterIdx, pageIdx, fontSize, width, fontFamily]);
+
+  // Restore progress on load
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/books/progress?id=${book.id}`);
+        const json = await res.json();
+        if (json?.ok && json.progress) {
+          if (typeof json.progress.chapter_idx === 'number') setChapterIdx(json.progress.chapter_idx);
+          if (typeof json.progress.page_idx === 'number') setPageIdx(json.progress.page_idx);
+          if (typeof json.progress.font_size === 'number') setFontSize(json.progress.font_size);
+          if (json.progress.width === 'narrow' || json.progress.width === 'comfort' || json.progress.width === 'wide') setWidth(json.progress.width);
+          if (typeof json.progress.font_family === 'string') setFontFamily(json.progress.font_family);
+        }
+      } catch {}
+    })();
+  }, [book.id]);
   // Hide app sidebar for focused reading
   useEffect(() => {
     document.body.classList.add('reader-fullscreen');
@@ -142,7 +174,21 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                   <button className="btn btn-outline-secondary btn-sm" onClick={() => { setSideMode('toc'); setShowSide((s) => !s); }}>{showSide && sideMode==='toc' ? 'Hide' : 'Chapters'}</button>
                   <button className="btn btn-outline-secondary btn-sm" disabled={!canPrev} onClick={handlePrev}>Prev</button>
                   <button className="btn btn-outline-secondary btn-sm" disabled={!canNext} onClick={handleNext}>Next</button>
-                  <Link href="/library" className="btn btn-primary btn-sm">Back to Library</Link>
+                  <Link
+                    href="/library"
+                    className={`btn btn-primary btn-sm ${saving ? 'disabled' : ''}`}
+                    onClick={async (e) => {
+                      try {
+                        setSaving(true);
+                        await fetch('/api/books/progress', {
+                          method: 'POST', headers: { 'content-type': 'application/json' },
+                          body: JSON.stringify({ bookId: book.id, chapterIdx, pageIdx, fontSize, width, fontFamily })
+                        });
+                      } catch {} finally { setSaving(false); }
+                    }}
+                  >
+                    {saving ? 'Saving…' : 'Back to Library'}
+                  </Link>
                 </div>
                 <div className="button-row">
                   <button className="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1" onClick={() => { setSideMode('settings'); setShowSide(true); }} title="Reading settings">
