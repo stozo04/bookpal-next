@@ -36,6 +36,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
   const [sideMode, setSideMode] = useState<"toc" | "ai" | "settings">("toc");
   const [fontSize, setFontSize] = useState(18);
   const [width, setWidth] = useState<'narrow' | 'comfort' | 'wide'>("comfort");
+  const [fontFamily, setFontFamily] = useState<string>("");
   const chapter = book.chapters[chapterIdx];
   const [pageIdx, setPageIdx] = useState(0);
   const [pageCount, setPageCount] = useState(1);
@@ -82,7 +83,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
       return Math.max(1, Math.ceil(normalized.length / charsPerPage));
     });
     setChapterPageCounts(counts);
-  }, [containerWidth, fontSize, width, book.chapters]);
+  }, [containerWidth, fontSize, width, book.chapters, fontFamily]);
 
   function handleNext() {
     if (pageIdx < pageCount - 1) {
@@ -154,7 +155,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
               </div>
             </div>
             <h3 className="h6 mb-3">{chapter.title}</h3>
-            <ReaderContent text={chapter.content} font={fontSize} width={width} sideKey={`${sideMode}-${showSide}`} pageIdx={pageIdx} onPageCount={setPageCount} onMeasureWidth={setContainerWidth} />
+            <ReaderContent text={chapter.content} font={fontSize} fontFamily={fontFamily} width={width} sideKey={`${sideMode}-${showSide}`} pageIdx={pageIdx} onPageCount={setPageCount} onMeasureWidth={setContainerWidth} />
             {('summary' in chapter) && (chapter as any).summary && (
               <div className="mt-4 p-3 rounded-3 bg-body-tertiary border">
                 <div className="small text-secondary mb-1">AI Summary</div>
@@ -223,6 +224,62 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
                     <input type="range" min={16} max={22} value={fontSize} onChange={(e) => setFontSize(parseInt(e.target.value))} className="w-100" />
                   </div>
                   <div>
+                    <label className="small text-secondary d-block mb-1">Font family</label>
+                    <div className="text-secondary small mb-2">Pick a typeface. Serif suits long reading; sans-serif is great for UI and notes.</div>
+                    {[
+                      {
+                        group: 'Serif (for long reading)',
+                        fonts: [
+                          { name: 'Literata', css: 'Literata', description: "Google Play Books’ typeface – calm, bookish, beautifully tuned for paragraphs." },
+                          { name: 'Crimson Pro', css: 'Crimson Pro', description: "Classic 'Garamond-ish' vibe, elegant at body sizes." },
+                          { name: 'Spectral', css: 'Spectral', description: "Contemporary book serif with strong italics; great on screens." },
+                          { name: 'Lora', css: 'Lora', description: "Warm, sturdy, handles small sizes well." },
+                          { name: 'Merriweather', css: 'Merriweather', description: "A bit larger x-height; very readable on low-contrast screens." },
+                          { name: 'EB Garamond', css: 'EB Garamond', description: "Historical flavor; gorgeous at 18–22px." },
+                          { name: 'Charis SIL', css: 'Charis SIL', description: "Book workhorse, wide language support." },
+                          { name: 'Noto Serif', css: 'Noto Serif', description: "Massive language coverage; sensible defaults." },
+                        ]
+                      },
+                      {
+                        group: 'Sans-Serif (for UI & notes)',
+                        fonts: [
+                          { name: 'Inter', css: 'Inter', description: "The web’s friendly UI champ; excellent hinting and symbols." },
+                          { name: 'Source Sans 3', css: 'Source Sans 3', description: "Humanist, neutral, pairs with Source Serif." },
+                          { name: 'IBM Plex Sans', css: 'IBM Plex Sans', description: "Crisp, techy, still very legible." },
+                          { name: 'Public Sans', css: 'Public Sans', description: "U.S. Web Design System’s sans; dependable and quiet." },
+                          { name: 'PT Sans', css: 'PT Sans', description: "Compact, readable; pairs with PT Serif." },
+                          { name: 'Atkinson Hyperlegible', css: 'Atkinson Hyperlegible', description: "Designed for clarity; great accessibility option." },
+                          { name: 'Lexend', css: 'Lexend', description: "Research-driven to reduce visual crowding; many widths/grades." },
+                          { name: 'Noto Sans', css: 'Noto Sans', description: "Pan-script coverage; safe default." },
+                        ]
+                      }
+                    ].map((grp, gi) => (
+                      <div key={gi} className="mb-2">
+                        <div className="small fw-semibold mb-1">{grp.group}</div>
+                        <div className="list-group">
+                          {grp.fonts.map((f, fi) => (
+                            <label key={fi} className="list-group-item d-flex align-items-start gap-2">
+                              <input
+                                type="radio"
+                                name="reader-font"
+                                className="form-check-input mt-1"
+                                checked={fontFamily === f.css}
+                                onChange={() => setFontFamily(f.css)}
+                              />
+                              <div className="flex-grow-1">
+                                <div className="d-flex align-items-center justify-content-between">
+                                  <span>{f.name}</span>
+                                  <span className="text-secondary small" style={{ fontFamily: f.css }}>{f.name}</span>
+                                </div>
+                                <div className="text-secondary small">{f.description}</div>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
                     <label className="small text-secondary d-block mb-1">Width</label>
                     <div className="btn-group btn-group-sm w-100" role="group" aria-label="Width">
                       <button className={`btn btn-outline-primary ${width === 'narrow' ? 'active' : ''}`} onClick={() => setWidth('narrow')}>Narrow</button>
@@ -243,7 +300,7 @@ export default function ReaderPage({ params }: { params: Promise<{ id: string }>
   );
 }
 
-function ReaderContent({ text, font, width, sideKey, pageIdx, onPageCount, onMeasureWidth }: { text: string; font: number; width: 'narrow' | 'comfort' | 'wide'; sideKey: string; pageIdx: number; onPageCount: (n: number) => void; onMeasureWidth: (w: number) => void }) {
+function ReaderContent({ text, font, fontFamily, width, sideKey, pageIdx, onPageCount, onMeasureWidth }: { text: string; font: number; fontFamily: string; width: 'narrow' | 'comfort' | 'wide'; sideKey: string; pageIdx: number; onPageCount: (n: number) => void; onMeasureWidth: (w: number) => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [menuKind, setMenuKind] = useState<'word' | 'text'>('text');
@@ -334,6 +391,7 @@ function ReaderContent({ text, font, width, sideKey, pageIdx, onPageCount, onMea
     meas.className = `reader-content ${width}`;
     meas.style.width = `${containerWidth}px`;
     meas.style.fontSize = `${font}px`;
+    if (fontFamily) meas.style.fontFamily = fontFamily;
     document.body.appendChild(meas);
 
     // Split into paragraphs but preserve content by keeping final newline-joins identical on output
@@ -447,13 +505,13 @@ function ReaderContent({ text, font, width, sideKey, pageIdx, onPageCount, onMea
     setPages(builtPages.length ? builtPages : [normalized]);
     onPageCount(builtPages.length || 1);
   // Only re-run when these scalar inputs change. Avoid passing functions/objects that change identity
-  }, [text, font, width, sideKey]);
+  }, [text, font, fontFamily, width, sideKey]);
 
   const pageText = pages[Math.min(pageIdx, Math.max(0, pages.length - 1))] || '';
 
   return (
     <div>
-      <div ref={containerRef} className={`reader-content ${width}`} style={{ fontSize: font }} onContextMenu={handleContextMenu}>
+      <div ref={containerRef} className={`reader-content ${width}`} style={{ fontSize: font, fontFamily: fontFamily || undefined }} onContextMenu={handleContextMenu}>
         {pageText.split(/\n\n/).map((p, i) => (<p key={i}>{p}</p>))}
       </div>
 

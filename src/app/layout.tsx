@@ -20,6 +20,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" className="h-100" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Sans:wght@400;600&family=Public+Sans:wght@400;600&family=PT+Sans:wght@400;700&family=Atkinson+Hyperlegible:wght@400;700&family=Lexend:wght@400;600&family=Noto+Sans:wght@400;700&family=Literata:opsz,wght@7..72,400;7..72,600&family=Crimson+Pro:wght@400;600&family=Spectral:wght@400;600&family=Lora:wght@400;600&family=Merriweather:wght@400;700&family=EB+Garamond:wght@400;600&family=Noto+Serif:wght@400;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className="min-vh-100 text-body">
         {/* Bootstrap color mode SSR init: set data-bs-theme before hydration to avoid flash */}
         <script
