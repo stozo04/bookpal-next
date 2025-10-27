@@ -1,3 +1,4 @@
+```mermaid
 erDiagram
     USERS ||--o{ BOOKS : "owns"
     USERS ||--o{ READER_SESSIONS : "has"
@@ -218,3 +219,4 @@ erDiagram
       jsonb descriptors
       jsonb first_last_seen
     }
+```

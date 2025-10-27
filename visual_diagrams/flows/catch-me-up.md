@@ -1,3 +1,4 @@
+```mermaid
 sequenceDiagram
     autonumber
     participant U as Reader (UI)
@@ -24,3 +25,4 @@ sequenceDiagram
     S-->>U: Session memory refreshed; resume state set
 
     U-->>U: UI shows: Recap (expand), Quick quiz (optional),\n"Resume at Chapter X" CTA
+```

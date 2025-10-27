@@ -1,3 +1,4 @@
+```mermaid
 stateDiagram-v2
     [*] --> CheckBookOpen
 
@@ -29,3 +30,4 @@ stateDiagram-v2
     CatchMeUp --> ReadyToRead
 
     ReadyToRead --> [*]
+```

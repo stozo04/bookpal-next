@@ -1,3 +1,4 @@
+```mermaid
 flowchart LR
   subgraph Client["Reader UI (Next.js)"]
     A1[Summarize Paragraph]
@@ -106,3 +107,4 @@ flowchart LR
   %% Caching & perf
   B3 <-->|hot sets| D7
   B1 <-->|recent session window| D7
+```
