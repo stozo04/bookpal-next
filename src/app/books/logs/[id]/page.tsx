@@ -2,11 +2,12 @@ import { supabaseService } from "@/lib/supabaseServer";
 
 export const runtime = "nodejs";
 
-export default async function BookLogsPage({ params }: { params: { id: string } }) {
+export default async function BookLogsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const { data: logs = [] } = await supabaseService
     .from('book_jobs')
     .select('created_at, level, message')
-    .eq('book_id', params.id)
+    .eq('book_id', id)
     .order('created_at', { ascending: true });
 
   return (

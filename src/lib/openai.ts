@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import type { Book } from "./types";
 
 const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 const HAS_KEY = !!process.env.OPENAI_API_KEY;
@@ -95,6 +96,66 @@ TEXT:\n${sample}`;
   }
   if (!parsed || !Array.isArray(parsed)) return [];
   return parsed as CharacterProfile[];
+}
+
+export async function structureBookFromText(textContent: string): Promise<Book> {
+  const text = textContent || "";
+  const paragraphBlocks = text
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  // Dev/mock path when no OpenAI key is configured
+  if (!HAS_KEY) {
+    const limited = paragraphBlocks.slice(0, 10);
+    return {
+      title: "Untitled Book",
+      author: "Unknown Author",
+      chapters: limited.map((p, i) => ({ title: `Chapter ${i + 1}`, content: p })),
+      characters: await extractCharacters(text),
+    };
+  }
+
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+  const prompt = `Analyze the provided book text and return ONLY strict JSON with the following shape:
+{
+  "title": string,
+  "author": string,
+  "chapters": [{ "title": string, "content": string }],
+  "characters": string[]
+}
+Rules:
+- Do not invent content; base chapters solely on the text.
+- If title or author are unclear, use "Untitled Book" and "Unknown Author".
+- 6–20 chapters is acceptable; combine paragraphs sensibly; the first chapter should begin at the start.
+- No markdown fences or commentary; return JSON only.
+
+TEXT:\n${text.slice(0, 120_000)}`;
+
+  const r = await client.responses.create({ model: MODEL, input: prompt, temperature: 0.2 });
+  let out = (r.output_text || "").trim();
+
+  // Strip code fences if present
+  const fence = /```(?:json)?\s*([\s\S]*?)```/i.exec(out);
+  if (fence) out = fence[1].trim();
+
+  const safeParse = <T,>(s: string): T | null => {
+    try { return JSON.parse(s) as T; } catch { return null; }
+  };
+
+  const parsed = safeParse<Book>(out);
+  if (parsed && parsed.title && parsed.author && Array.isArray(parsed.chapters) && Array.isArray(parsed.characters)) {
+    return parsed;
+  }
+
+  // Fallback: construct a reasonable structure from paragraphs
+  const blocks = paragraphBlocks.slice(0, 12);
+  return {
+    title: "Untitled Book",
+    author: "Unknown Author",
+    chapters: blocks.map((p, i) => ({ title: `Chapter ${i + 1}` , content: p })),
+    characters: await extractCharacters(text),
+  };
 }
 
 // import OpenAI from "openai";

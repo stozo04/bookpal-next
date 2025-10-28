@@ -22,5 +22,5 @@ export default async function LibraryPage() {
     .eq("user_id", userId)
     .order("created_at", { ascending: false }) as { data: DBBook[] | null };
 
-  return <LibraryClient initialBooks={books} />;
+  return <LibraryClient initialBooks={books ?? []} />;
 }

@@ -33,7 +33,9 @@ const handler = NextAuth({
     },
     async session({ session, token }) {
       // surface to client if needed
-      session.user.provider = token.provider as string | undefined;
+      if (session.user) {
+        (session.user as any).provider = token.provider as string | undefined;
+      }
       return session;
     },
   },

@@ -34,6 +34,12 @@ export default function EditBookClient({ book }: { book: BookInfo }) {
   const publicBase = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const coverUrl = (coverPath ? `${publicBase}/storage/v1/object/public/covers/${coverPath}${coverVersion ? `?v=${coverVersion}` : ''}` : (book.cover_public_url || null));
 
+  // Find cover state
+  const [findingCover, setFindingCover] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
+  const [findError, setFindError] = useState<string>("");
+  const [findItems, setFindItems] = useState<Array<{ title: string; author?: string; image: string; source: string; source_id?: any }>>([]);
+
   // Load extra data for progress and summary (best-effort)
   async function loadBookContext() {
     try {
@@ -76,7 +82,40 @@ export default function EditBookClient({ book }: { book: BookInfo }) {
     }
   }
 
-  // findCover removed per request
+  async function findCover() {
+    setFindingCover(true); setFindError("");
+    try {
+      const qTitle = encodeURIComponent(title || "");
+      const qAuthor = encodeURIComponent(author || "");
+      if (!title && !author) { setFindError('Enter a title or author first.'); return; }
+      const res = await fetch(`/api/books/cover/search?title=${qTitle}&author=${qAuthor}`);
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || 'Search failed');
+      setFindItems(j.items || []);
+      setFindOpen(true);
+    } catch (e: any) {
+      setFindError(e?.message || 'Failed to search');
+    } finally { setFindingCover(false); }
+  }
+
+  async function applyFoundCover(item: { image: string; source: string; source_id?: any }) {
+    setWorking(true); setMessage("");
+    try {
+      const res = await fetch('/api/books/cover/set', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: book.id, imageUrl: item.image, source: item.source, source_id: item.source_id })
+      });
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error || 'Failed to set cover');
+      setCoverPath(j.path);
+      setCoverVersion(Date.now());
+      setMessage('Cover updated');
+      setFindOpen(false);
+    } catch (e: any) {
+      setMessage(e?.message || 'Failed');
+    } finally { setWorking(false); }
+  }
 
   async function uploadCover() {
     if (!fileRef.current || !fileRef.current.files || fileRef.current.files.length === 0) { setMessage('Choose a file first'); return; }
@@ -115,11 +154,39 @@ export default function EditBookClient({ book }: { book: BookInfo }) {
             <div className="d-none">
               <input ref={fileRef} type="file" accept="image/*" onChange={() => { uploadCover(); }} />
             </div>
-            <div className="mt-3 d-flex justify-content-center">
+            <div className="mt-3 d-flex flex-wrap gap-2 justify-content-center">
               <button className="btn btn-outline-secondary btn-sm" onClick={() => fileRef.current?.click()} disabled={working}>Change cover</button>
+              <button className="btn btn-outline-primary btn-sm" onClick={findCover} disabled={working || findingCover}>{findingCover ? 'Finding…' : 'Find cover'}</button>
             </div>
             {message && (
               <div className="small text-secondary mt-2" role="status">{message}</div>
+            )}
+            {findError && (
+              <div className="small text-danger mt-2" role="status">{findError}</div>
+            )}
+            {findOpen && (
+              <div className="mt-3">
+                <div className="small text-secondary mb-2">Select a cover result</div>
+                <div className="d-grid gap-2">
+                  {findItems.length === 0 && (
+                    <div className="small text-secondary">No results found.</div>
+                  )}
+                  {findItems.map((it, idx) => (
+                    <div key={`${it.image}-${idx}`} className="d-flex align-items-center gap-3 p-2 border rounded-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={it.image} alt={it.title} style={{ width: 48, height: 64, objectFit: 'cover', borderRadius: 4 }} />
+                      <div className="flex-grow-1">
+                        <div className="small fw-semibold">{it.title}</div>
+                        <div className="small text-secondary">{it.author || 'Unknown author'}</div>
+                      </div>
+                      <button className="btn btn-sm btn-success" onClick={() => applyFoundCover(it)} disabled={working}>Use</button>
+                    </div>
+                  ))}
+                </div>
+                <div className="d-flex justify-content-end mt-2">
+                  <button className="btn btn-sm btn-outline-secondary" onClick={() => setFindOpen(false)}>Close</button>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -193,10 +260,7 @@ export default function EditBookClient({ book }: { book: BookInfo }) {
             </div>
             {showAdvanced && (
               <div id="advanced-tools" className="mb-2 d-flex flex-wrap gap-2">
-                <button className="btn btn-outline-secondary btn-sm" onClick={() => {
-                  // Rebuild cover: simple alias to upload/find flows removed; placeholder for future automation
-                  setMessage('Rebuild cover is not available without Find cover. Upload a new image instead.');
-                }} disabled={working}>Rebuild cover</button>
+                <button className="btn btn-outline-secondary btn-sm" onClick={() => { findCover(); setShowAdvanced(true); }} disabled={working || findingCover}>{findingCover ? 'Finding…' : 'Rebuild cover'}</button>
                 <button className="btn btn-outline-secondary btn-sm" onClick={async () => {
                   setWorking(true); setMessage('');
                   try {
